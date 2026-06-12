@@ -20,8 +20,12 @@ EPISODE_LEN = 4
 def cfg(tmp_path) -> ConfigManager:
     setup = {
         "version": "1.00",
-        "data": {"seq_len": SEQ_LEN, "n_actions": N_ACTIONS, "state_dim": STATE_DIM,
-                 "train_val_split": 0.8},
+        "data": {
+            "seq_len": SEQ_LEN,
+            "n_actions": N_ACTIONS,
+            "state_dim": STATE_DIM,
+            "train_val_split": 0.8,
+        },
         "rl": {"episode_length": EPISODE_LEN},
         "reward": {
             "overload_threshold_norm": 0.8,
@@ -40,8 +44,12 @@ def model() -> LSTMTransitionModel:
     """Tiny untrained LSTM (functional but not meaningful predictions)."""
     torch.manual_seed(42)
     return LSTMTransitionModel(
-        state_dim=STATE_DIM, n_actions=N_ACTIONS, action_embed_dim=4,
-        hidden_size=8, num_layers=1, dropout=0.0,
+        state_dim=STATE_DIM,
+        n_actions=N_ACTIONS,
+        action_embed_dim=4,
+        hidden_size=8,
+        num_layers=1,
+        dropout=0.0,
     )
 
 
@@ -58,6 +66,12 @@ def fake_data() -> dict:
 @pytest.fixture()
 def env(cfg, model, fake_data) -> RLEnvironment:
     return RLEnvironment(cfg, model, fake_data)
+
+
+class TestStateDim:
+    def test_state_dim_matches_data(self, env):
+        """state_dim property must report the training window's feature width."""
+        assert env.state_dim == STATE_DIM
 
 
 class TestReset:
@@ -124,8 +138,8 @@ class TestReward:
     def test_reward_optimal_load_balanced(self, env):
         """Load at optimal (0.5) with perfect balance → maximal positive reward."""
         next_state = np.zeros(STATE_DIM, dtype=np.float32)
-        next_state[0] = 0.5   # rolling_load at optimal
-        next_state[1] = 1.0   # muscle_balance (perfect)
+        next_state[0] = 0.5  # rolling_load at optimal
+        next_state[1] = 1.0  # muscle_balance (perfect)
         reward = env._compute_reward(next_state)
         assert reward > 0.5, f"Expected reward > 0.5 at optimal load, got {reward}"
 

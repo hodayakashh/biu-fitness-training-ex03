@@ -64,30 +64,27 @@ class TestPlotter:
         paths = plotter.save_all(lstm_result, reinforce_result, a2c_result, data)
         assert len(paths) == 5
 
-    def test_all_files_exist(
-        self, cfg, lstm_result, reinforce_result, a2c_result, data
-    ):
+    def test_all_files_exist(self, cfg, lstm_result, reinforce_result, a2c_result, data):
         plotter = Plotter(cfg)
         paths = plotter.save_all(lstm_result, reinforce_result, a2c_result, data)
         for p in paths:
             assert p.exists(), f"Plot file not found: {p}"
 
-    def test_all_files_are_png(
-        self, cfg, lstm_result, reinforce_result, a2c_result, data
-    ):
+    def test_all_files_are_png(self, cfg, lstm_result, reinforce_result, a2c_result, data):
         plotter = Plotter(cfg)
         paths = plotter.save_all(lstm_result, reinforce_result, a2c_result, data)
         assert all(p.suffix == ".png" for p in paths)
 
-    def test_expected_filenames_present(
-        self, cfg, lstm_result, reinforce_result, a2c_result, data
-    ):
+    def test_expected_filenames_present(self, cfg, lstm_result, reinforce_result, a2c_result, data):
         plotter = Plotter(cfg)
         paths = plotter.save_all(lstm_result, reinforce_result, a2c_result, data)
         names = {p.name for p in paths}
         expected = {
-            "lstm_loss.png", "reinforce_return.png", "a2c_return.png",
-            "comparison.png", "state_analysis.png",
+            "lstm_loss.png",
+            "reinforce_return.png",
+            "a2c_return.png",
+            "comparison.png",
+            "state_analysis.png",
         }
         assert expected == names
 
@@ -99,11 +96,22 @@ class TestPlotter:
         paths = plotter.save_all(lstm_result, short_rf, short_a2c, data)
         assert len(paths) == 5
 
+    def test_comparison_skips_single_point_series(self, cfg, lstm_result):
+        """A series with <2 points must be skipped (not rolling-averaged)."""
+        one_rf = {"episode_returns": [1.0], "return_variance": [0.1]}
+        one_a2c = {"episode_returns": [2.0]}
+        data = {"daily_df": pd.DataFrame({"other": range(5)})}
+        plotter = Plotter(cfg)
+        paths = plotter.save_all(lstm_result, one_rf, one_a2c, data)
+        comparison = next(p for p in paths if p.name == "comparison.png")
+        assert comparison.exists()
+
     def test_missing_rolling_load_column(self, cfg, lstm_result, reinforce_result, a2c_result):
         """State analysis should not crash when rolling_7day_load is absent."""
         df_no_load = pd.DataFrame({"other_col": range(10)})
         plotter = Plotter(cfg)
-        paths = plotter.save_all(lstm_result, reinforce_result, a2c_result,
-                                 {"daily_df": df_no_load})
+        paths = plotter.save_all(
+            lstm_result, reinforce_result, a2c_result, {"daily_df": df_no_load}
+        )
         state_path = next(p for p in paths if p.name == "state_analysis.png")
         assert state_path.exists()
