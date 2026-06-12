@@ -38,6 +38,8 @@
   "reward": {
     "volume_target": 10000.0,
     "overload_threshold": 50000.0,
+    "overload_threshold_norm": 0.8,
+    "optimal_load_norm": 0.5,
     "lambda_overload": 0.4,
     "lambda_imbalance": 0.3
   },
