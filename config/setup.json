@@ -5,7 +5,16 @@
     "n_actions": 6,
     "state_dim": 5,
     "train_val_split": 0.8,
-    "kaggle_dataset": "placeholder/workout-dataset"
+    "kaggle_dataset": "placeholder/workout-dataset",
+    "columns": {
+      "date": "Date",
+      "sets": "Sets",
+      "reps": "Reps",
+      "weight": "Weight_kg",
+      "duration": "Duration_min",
+      "muscle_group": "Muscle_Group"
+    },
+    "muscle_groups": ["Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Cardio"]
   },
   "lstm": {
     "hidden_size": 64,

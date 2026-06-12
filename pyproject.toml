@@ -47,3 +47,10 @@ omit = ["*/tests/*", "src/**/gui/*"]
 
 [tool.coverage.report]
 fail_under = 85
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.17",
+]
