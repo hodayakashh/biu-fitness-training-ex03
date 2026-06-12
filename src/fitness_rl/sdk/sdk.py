@@ -36,6 +36,20 @@ class FitnessRLSDK:
     # Data pipeline
     # ------------------------------------------------------------------
 
+    def download_dataset(self, dest_dir: str | Path | None = None) -> Path:
+        """
+        Download the configured Kaggle dataset via the rate-limited gatekeeper.
+
+        Args:
+            dest_dir: Target directory (defaults to config ``paths.data_dir``).
+
+        Returns:
+            Path to the directory containing the downloaded dataset.
+        """
+        from ..services.data_service import DataService
+
+        return DataService(self._cfg).download_dataset(dest_dir)
+
     def prepare_data(self, csv_path: str | Path) -> dict:
         """
         Load raw CSV, compute daily summaries, cluster actions.

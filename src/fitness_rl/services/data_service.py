@@ -9,10 +9,12 @@ day encoding → K-Means action clusters → train/val split → normalisation
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
 from ..shared.config import ConfigManager
+from ..shared.gatekeeper import ApiGatekeeper
 from .data_features import add_rolling_features, add_sinusoidal_encoding
 from .data_normalizer import DataNormalizer
 from .data_preprocessor import DataPreprocessor
@@ -34,6 +36,44 @@ class DataService:
         self._prep = DataPreprocessor(cfg)
         self._norm = DataNormalizer(cfg)
         self._wins = DataWindows(cfg)
+
+    def _default_kaggle_api(self):  # pragma: no cover - needs real Kaggle credentials
+        """Build an authenticated Kaggle API client (lazy: import auths on load)."""
+        from kaggle.api.kaggle_api_extended import KaggleApi
+
+        api = KaggleApi()
+        api.authenticate()
+        return api
+
+    def download_dataset(
+        self,
+        dest_dir: str | Path | None = None,
+        gatekeeper: ApiGatekeeper | None = None,
+        api: Any | None = None,
+    ) -> Path:
+        """
+        Download the configured Kaggle dataset through the ApiGatekeeper.
+
+        Why: Dr. Segal's architecture requires every external API call to be
+        rate-limited and routed through the gatekeeper rather than called
+        directly, so the Kaggle download goes through ``gatekeeper.execute``.
+
+        Args:
+            dest_dir: Target directory (defaults to config ``paths.data_dir``).
+            gatekeeper: Injectable gatekeeper (defaults to a Kaggle-scoped one).
+            api: Injectable Kaggle API client (defaults to a real authenticated
+                client); injected in tests to avoid network/credentials.
+
+        Returns:
+            Path to the directory containing the downloaded dataset.
+        """
+        gatekeeper = gatekeeper or ApiGatekeeper(service="kaggle")
+        api = api or self._default_kaggle_api()
+        dataset = self._cfg.get_nested("data", "kaggle_dataset")
+        dest = Path(dest_dir or self._cfg.get_nested("paths", "data_dir"))
+        dest.mkdir(parents=True, exist_ok=True)
+        gatekeeper.execute(api.dataset_download_files, dataset, path=str(dest), unzip=True)
+        return dest
 
     def load_raw(self, csv_path: str | Path) -> pd.DataFrame:
         """
@@ -88,12 +128,8 @@ class DataService:
         val_states = self._norm.transform(val_df)
 
         seq_len: int = self._cfg.get_nested("data", "seq_len")
-        x_tr, xa_tr, y_tr = self._wins.build(
-            train_states, train_df["action_label"].values, seq_len
-        )
-        x_vl, xa_vl, y_vl = self._wins.build(
-            val_states, val_df["action_label"].values, seq_len
-        )
+        x_tr, xa_tr, y_tr = self._wins.build(train_states, train_df["action_label"].values, seq_len)
+        x_vl, xa_vl, y_vl = self._wins.build(val_states, val_df["action_label"].values, seq_len)
 
         return {
             "daily_df": daily_df,
