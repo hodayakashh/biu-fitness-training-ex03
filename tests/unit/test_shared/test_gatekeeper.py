@@ -1,6 +1,7 @@
 """Unit tests for ApiGatekeeper — execute, retry, and queue status."""
 
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -73,6 +74,36 @@ class TestApiGatekeeper:
         assert gk.execute(flaky) == "recovered"
         assert len(call_log) == 3
 
+    def test_wait_for_capacity_sleeps_when_at_limit(self, tmp_path):
+        """At the per-minute limit, _wait_for_capacity must sleep until freed."""
+        config = {
+            "rate_limits": {
+                "version": "1.00",
+                "services": {
+                    "default": {
+                        "requests_per_minute": 1,
+                        "requests_per_hour": 1000,
+                        "concurrent_max": 10,
+                        "retry_after_seconds": 0,
+                        "max_retries": 3,
+                    }
+                },
+            }
+        }
+        p = tmp_path / "rate_limits.json"
+        p.write_text(json.dumps(config))
+        gk = ApiGatekeeper(str(p))
+        gk._call_times = [__import__("time").monotonic()]  # already at limit (rpm=1)
+
+        def clear_after_sleep(_seconds):
+            gk._call_times = []  # free up capacity so the loop exits
+
+        with patch(
+            "fitness_rl.shared.gatekeeper.time.sleep", side_effect=clear_after_sleep
+        ) as sleep_mock:
+            gk._wait_for_capacity()
+        sleep_mock.assert_called_once()
+
     def test_execute_raises_after_max_retries_exhausted(self, rate_config):
         def always_fails():
             raise RuntimeError("permanent failure")
@@ -80,3 +111,36 @@ class TestApiGatekeeper:
         gk = ApiGatekeeper(rate_config)
         with pytest.raises(RuntimeError, match="failed after"):
             gk.execute(always_fails)
+
+
+def _write_config(tmp_path, version="1.00"):
+    """Write a rate-limits config with distinct kaggle (10) and default (30) rpm."""
+    config = {
+        "rate_limits": {
+            "version": version,
+            "services": {
+                "kaggle": {"requests_per_minute": 10, "max_retries": 3},
+                "default": {"requests_per_minute": 30, "max_retries": 3},
+            },
+        }
+    }
+    p = tmp_path / "rate_limits.json"
+    p.write_text(json.dumps(config))
+    return str(p)
+
+
+class TestServiceLimits:
+    def test_uses_service_specific_limits(self, tmp_path):
+        """The kaggle service must apply its own stricter 10 rpm, not default."""
+        gk = ApiGatekeeper(_write_config(tmp_path), service="kaggle")
+        assert gk._rpm == 10
+
+    def test_falls_back_to_default_when_service_absent(self, tmp_path):
+        """An unknown service must fall back to the default limits."""
+        gk = ApiGatekeeper(_write_config(tmp_path), service="unknown")
+        assert gk._rpm == 30
+
+    def test_rejects_rate_limits_version_mismatch(self, tmp_path):
+        """A config version != code version must raise at construction."""
+        with pytest.raises(RuntimeError, match="does not match"):
+            ApiGatekeeper(_write_config(tmp_path, version="9.99"))

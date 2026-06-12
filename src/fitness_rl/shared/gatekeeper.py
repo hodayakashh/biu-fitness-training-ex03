@@ -16,6 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .version import check_version
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,17 +30,29 @@ class ApiGatekeeper:
     Setup:  instantiated with rate_limits.json path; shared across services
     """
 
-    def __init__(self, rate_config_path: str | Path = "config/rate_limits.json") -> None:
+    def __init__(
+        self,
+        rate_config_path: str | Path = "config/rate_limits.json",
+        service: str = "kaggle",
+    ) -> None:
         """
         Load rate limit config and initialise the call queue.
 
+        Why: limits are per-service — Kaggle is throttled harder than the
+        generic default — so the gatekeeper must apply the caller's own
+        service limits, falling back to ``default`` only when absent.
+
         Args:
             rate_config_path: Path to rate_limits.json.
+            service: Service key in rate_limits.json whose limits to enforce.
         """
         path = Path(rate_config_path)
         with path.open() as fh:
             cfg = json.load(fh)
-        svc_cfg = cfg["rate_limits"]["services"].get("default", {})
+        rate_cfg = cfg["rate_limits"]
+        check_version(rate_cfg.get("version"))
+        services = rate_cfg["services"]
+        svc_cfg = services.get(service, services.get("default", {}))
         self._rpm: int = svc_cfg.get("requests_per_minute", 30)
         self._max_retries: int = svc_cfg.get("max_retries", 3)
         self._retry_after: float = svc_cfg.get("retry_after_seconds", 30)
@@ -74,7 +88,9 @@ class ApiGatekeeper:
                 logger.warning("Attempt %d failed: %s", attempt, exc)
                 if attempt < self._max_retries:
                     time.sleep(self._retry_after)
-        raise RuntimeError(f"API call {api_call.__name__} failed after {self._max_retries} retries.")
+        raise RuntimeError(
+            f"API call {api_call.__name__} failed after {self._max_retries} retries."
+        )
 
     def get_queue_status(self) -> dict[str, int]:
         """Return current queue depth and recent call count."""
