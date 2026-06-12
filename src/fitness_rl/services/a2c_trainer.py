@@ -67,8 +67,13 @@ class A2CTrainer:
 
         for _ in range(n_episodes):
             ep_return = self._run_episode(
-                actor, critic, actor_opt, critic_opt,
-                gamma, value_coeff, entropy_bonus,
+                actor,
+                critic,
+                actor_opt,
+                critic_opt,
+                gamma,
+                value_coeff,
+                entropy_bonus,
             )
             episode_returns.append(ep_return)
 

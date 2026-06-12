@@ -49,8 +49,12 @@ def fake_data() -> dict:
     x_tr, xa_tr, y_tr = make_split(40)
     x_vl, xa_vl, y_vl = make_split(10)
     return {
-        "X_train": x_tr, "X_actions_train": xa_tr, "y_train": y_tr,
-        "X_val": x_vl, "X_actions_val": xa_vl, "y_val": y_vl,
+        "X_train": x_tr,
+        "X_actions_train": xa_tr,
+        "y_train": y_tr,
+        "X_val": x_vl,
+        "X_actions_val": xa_vl,
+        "y_val": y_vl,
     }
 
 
@@ -89,8 +93,12 @@ class TestLSTMTrainer:
         state_dict = torch.load(weights_path, weights_only=True)
         # Verify the saved dict can be loaded back into a fresh model
         fresh = result["model"].__class__(
-            state_dim=5, n_actions=3, action_embed_dim=4,
-            hidden_size=8, num_layers=1, dropout=0.0,
+            state_dim=5,
+            n_actions=3,
+            action_embed_dim=4,
+            hidden_size=8,
+            num_layers=1,
+            dropout=0.0,
         )
         fresh.load_state_dict(state_dict)  # must not raise
 

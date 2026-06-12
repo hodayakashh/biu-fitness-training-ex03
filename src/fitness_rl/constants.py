@@ -27,8 +27,8 @@ ACTION_LABELS: dict[int, str] = {
 STATE_ROLLING_LOAD = 0
 STATE_MUSCLE_BALANCE = 1
 STATE_DURATION_AVG = 2
-STATE_DAY_SIN = 3   # sin(2π·t/28) — cyclic day encoding
-STATE_DAY_COS = 4   # cos(2π·t/28) — cyclic day encoding
+STATE_DAY_SIN = 3  # sin(2π·t/28) — cyclic day encoding
+STATE_DAY_COS = 4  # cos(2π·t/28) — cyclic day encoding
 
 N_ACTIONS = len(WorkoutAction)
 STATE_DIM = 5  # rolling_load, muscle_balance, duration_avg, day_sin, day_cos

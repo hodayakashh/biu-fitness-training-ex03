@@ -71,8 +71,12 @@ class TestLSTMTransitionModel:
     def test_single_layer_no_dropout(self):
         """Dropout is suppressed when num_layers=1 to avoid PyTorch warning."""
         model = LSTMTransitionModel(
-            state_dim=5, n_actions=6, action_embed_dim=4,
-            hidden_size=8, num_layers=1, dropout=0.5,
+            state_dim=5,
+            n_actions=6,
+            action_embed_dim=4,
+            hidden_size=8,
+            num_layers=1,
+            dropout=0.5,
         )
         x_s = torch.randn(2, 5, 5)
         x_a = torch.randint(0, 6, (2, 5))

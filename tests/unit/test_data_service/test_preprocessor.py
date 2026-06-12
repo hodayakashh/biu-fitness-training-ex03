@@ -13,6 +13,7 @@ from fitness_rl.shared.config import ConfigManager
 def cfg(tmp_path) -> ConfigManager:
     """Minimal config with column names and n_actions=3 for fast tests."""
     import json
+
     setup = {
         "version": "1.00",
         "data": {

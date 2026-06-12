@@ -84,7 +84,8 @@ class DataPreprocessor:
         """
         n_clusters = self._cfg.get_nested("data", "n_actions")
         feature_cols = [
-            c for c in ["total_volume", "session_duration", "muscle_balance_score"]
+            c
+            for c in ["total_volume", "session_duration", "muscle_balance_score"]
             if c in daily_df.columns
         ]
         features = daily_df[feature_cols].fillna(0).values

@@ -72,7 +72,7 @@ class LSTMTransitionModel(nn.Module):
         Returns:
             Float tensor of shape (batch, state_dim) — predicted s_{t+1}.
         """
-        action_emb = self.action_embedding(x_actions)           # (B, T, embed)
-        lstm_in = torch.cat([x_states, action_emb], dim=2)      # (B, T, state+embed)
-        out, _ = self.lstm(lstm_in)                              # (B, T, hidden)
-        return self.fc(out[:, -1, :])                            # (B, state_dim)
+        action_emb = self.action_embedding(x_actions)  # (B, T, embed)
+        lstm_in = torch.cat([x_states, action_emb], dim=2)  # (B, T, state+embed)
+        out, _ = self.lstm(lstm_in)  # (B, T, hidden)
+        return self.fc(out[:, -1, :])  # (B, state_dim)

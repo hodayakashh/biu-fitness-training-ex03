@@ -34,8 +34,15 @@ def cfg(tmp_path) -> ConfigManager:
             },
             "muscle_groups": ["Chest", "Back", "Legs"],
         },
-        "lstm": {"hidden_size": 32, "num_layers": 1, "dropout": 0.0, "action_embed_dim": 4,
-                 "learning_rate": 0.001, "batch_size": 8, "epochs": 2},
+        "lstm": {
+            "hidden_size": 32,
+            "num_layers": 1,
+            "dropout": 0.0,
+            "action_embed_dim": 4,
+            "learning_rate": 0.001,
+            "batch_size": 8,
+            "epochs": 2,
+        },
         "rl": {},
         "reward": {},
         "paths": {},
@@ -82,8 +89,17 @@ class TestDataServiceIntegration:
 
     def test_run_pipeline_returns_expected_keys(self, cfg, synthetic_csv):
         result = DataService(cfg).run_pipeline(synthetic_csv)
-        required = {"daily_df", "X_train", "X_actions_train", "y_train",
-                    "X_val", "X_actions_val", "y_val", "scaler", "kmeans"}
+        required = {
+            "daily_df",
+            "X_train",
+            "X_actions_train",
+            "y_train",
+            "X_val",
+            "X_actions_val",
+            "y_val",
+            "scaler",
+            "kmeans",
+        }
         assert required.issubset(result.keys())
 
     def test_run_pipeline_tensor_shapes(self, cfg, synthetic_csv):

@@ -77,9 +77,7 @@ class REINFORCETrainer:
             "return_variance": return_variance,
         }
 
-    def _run_episode(
-        self, policy: PolicyNetwork
-    ) -> tuple[list[torch.Tensor], list[float]]:
+    def _run_episode(self, policy: PolicyNetwork) -> tuple[list[torch.Tensor], list[float]]:
         """
         Generate one episode using the current policy and LSTM environment.
 
@@ -126,9 +124,7 @@ class REINFORCETrainer:
         return torch.tensor(returns, dtype=torch.float32)
 
     @staticmethod
-    def _pg_loss(
-        log_probs: list[torch.Tensor], returns: torch.Tensor
-    ) -> torch.Tensor:
+    def _pg_loss(log_probs: list[torch.Tensor], returns: torch.Tensor) -> torch.Tensor:
         """
         Compute the (negated) policy gradient loss with mean baseline.
 

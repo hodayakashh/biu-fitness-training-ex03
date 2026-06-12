@@ -13,10 +13,14 @@ from fitness_rl.shared.config import ConfigManager
 @pytest.fixture()
 def cfg(tmp_path) -> ConfigManager:
     p = tmp_path / "setup.json"
-    p.write_text(json.dumps({
-        "version": "1.00",
-        "data": {"seq_len": 7, "n_actions": 6, "state_dim": 5},
-    }))
+    p.write_text(
+        json.dumps(
+            {
+                "version": "1.00",
+                "data": {"seq_len": 7, "n_actions": 6, "state_dim": 5},
+            }
+        )
+    )
     return ConfigManager(p)
 
 
@@ -54,8 +58,10 @@ class TestDataWindows:
         x_s, x_a, y = DataWindows(cfg).build(states, actions, seq_len)
         for i in range(len(y)):
             np.testing.assert_allclose(
-                y[i].numpy(), states[i + seq_len], atol=1e-6,
-                err_msg=f"Leakage detected at sample {i}"
+                y[i].numpy(),
+                states[i + seq_len],
+                atol=1e-6,
+                err_msg=f"Leakage detected at sample {i}",
             )
 
     def test_window_content_correct(self, cfg, seq_data):

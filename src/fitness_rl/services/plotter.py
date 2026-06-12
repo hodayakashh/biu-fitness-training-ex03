@@ -58,12 +58,13 @@ class Plotter:
         """
         paths = [
             self._lstm_loss(lstm_result),
-            self._returns_curve(reinforce_result["episode_returns"], "REINFORCE",
-                                "tab:blue", "reinforce_return.png"),
-            self._returns_curve(a2c_result["episode_returns"], "A2C",
-                                "tab:orange", "a2c_return.png"),
-            self._comparison(reinforce_result["episode_returns"],
-                             a2c_result["episode_returns"]),
+            self._returns_curve(
+                reinforce_result["episode_returns"], "REINFORCE", "tab:blue", "reinforce_return.png"
+            ),
+            self._returns_curve(
+                a2c_result["episode_returns"], "A2C", "tab:orange", "a2c_return.png"
+            ),
+            self._comparison(reinforce_result["episode_returns"], a2c_result["episode_returns"]),
             self._state_analysis(data["daily_df"]),
         ]
         return paths
@@ -76,17 +77,14 @@ class Plotter:
         """Plot LSTM train and validation MSE loss vs epoch."""
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(lstm_result["train_losses"], label="Train loss", color="tab:blue")
-        ax.plot(lstm_result["val_losses"], label="Val loss", color="tab:orange",
-                linestyle="--")
+        ax.plot(lstm_result["val_losses"], label="Val loss", color="tab:orange", linestyle="--")
         ax.set_title("LSTM Transition Model — Training Loss")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("MSE Loss")
         ax.legend()
         return self._save(fig, "lstm_loss.png")
 
-    def _returns_curve(
-        self, returns: list[float], label: str, color: str, fname: str
-    ) -> Path:
+    def _returns_curve(self, returns: list[float], label: str, color: str, fname: str) -> Path:
         """Plot episodic returns with a rolling mean overlay."""
         fig, ax = plt.subplots(figsize=(8, 4))
         eps = list(range(1, len(returns) + 1))
@@ -94,17 +92,14 @@ class Plotter:
         if len(returns) >= 2:
             win = min(_ROLL_WIN, max(2, len(returns) // 5))
             rolling = pd.Series(returns).rolling(win, min_periods=1).mean()
-            ax.plot(eps, rolling, color=color, linewidth=2,
-                    label=f"Rolling mean (w={win})")
+            ax.plot(eps, rolling, color=color, linewidth=2, label=f"Rolling mean (w={win})")
         ax.set_title(f"{label} — Training Curve")
         ax.set_xlabel("Episode")
         ax.set_ylabel("Return")
         ax.legend()
         return self._save(fig, fname)
 
-    def _comparison(
-        self, rf_returns: list[float], a2c_returns: list[float]
-    ) -> Path:
+    def _comparison(self, rf_returns: list[float], a2c_returns: list[float]) -> Path:
         """Overlay REINFORCE and A2C rolling means on the same axes."""
         fig, ax = plt.subplots(figsize=(8, 4))
         for returns, label, color in [
@@ -126,8 +121,7 @@ class Plotter:
         """Plot rolling_7day_load over training days from the dataset."""
         fig, ax = plt.subplots(figsize=(8, 4))
         if "rolling_7day_load" in daily_df.columns:
-            ax.plot(daily_df["rolling_7day_load"].values,
-                    color="tab:green", linewidth=1.5)
+            ax.plot(daily_df["rolling_7day_load"].values, color="tab:green", linewidth=1.5)
         ax.set_title("Trainee State — Rolling 7-Day Load Over Time")
         ax.set_xlabel("Day")
         ax.set_ylabel("Normalised Rolling Load")

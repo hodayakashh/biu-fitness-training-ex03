@@ -53,7 +53,7 @@ class RLEnvironment:
         self._seq_len: int = cfg.get_nested("data", "seq_len") or 7
 
         # Keep training windows for realistic episode initialisation
-        self._x_train: np.ndarray = data["X_train"].numpy()       # (N, seq_len, state_dim)
+        self._x_train: np.ndarray = data["X_train"].numpy()  # (N, seq_len, state_dim)
         self._xa_train: np.ndarray = data["X_actions_train"].numpy()  # (N, seq_len)
 
         self._state: np.ndarray = np.zeros(self._x_train.shape[2])
@@ -77,7 +77,7 @@ class RLEnvironment:
             Current state s_0 as a float32 numpy array of shape (state_dim,).
         """
         idx = np.random.randint(0, len(self._x_train))
-        self._history_states = self._x_train[idx].copy()    # (seq_len, state_dim)
+        self._history_states = self._x_train[idx].copy()  # (seq_len, state_dim)
         self._history_actions = self._xa_train[idx].copy()  # (seq_len,)
         self._state = self._history_states[-1].copy()
         self._step_count = 0
@@ -105,7 +105,7 @@ class RLEnvironment:
         self._history_actions[-1] = action
 
         x_s = torch.from_numpy(self._history_states[np.newaxis]).float()  # (1, T, D)
-        x_a = torch.from_numpy(self._history_actions[np.newaxis])         # (1, T)
+        x_a = torch.from_numpy(self._history_actions[np.newaxis])  # (1, T)
 
         self._model.eval()
         with torch.no_grad():

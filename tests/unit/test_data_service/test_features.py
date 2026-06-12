@@ -54,7 +54,12 @@ class TestAddRollingFeatures:
 
     def test_no_nans_in_output(self, simple_daily_df):
         result = add_rolling_features(simple_daily_df)
-        assert not result[["rolling_7day_load", "session_duration_avg", "muscle_balance_score"]].isna().any().any()
+        assert (
+            not result[["rolling_7day_load", "session_duration_avg", "muscle_balance_score"]]
+            .isna()
+            .any()
+            .any()
+        )
 
     def test_muscle_balance_zero_without_mg_cols(self, simple_daily_df):
         result = add_rolling_features(simple_daily_df)

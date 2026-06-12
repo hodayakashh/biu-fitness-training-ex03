@@ -42,10 +42,18 @@ def cfg(tmp_path) -> ConfigManager:
     setup = {
         "version": "1.00",
         "data": {"seq_len": 5, "n_actions": N_ACTIONS, "state_dim": STATE_DIM},
-        "rl": {"episode_length": EPISODE_LEN, "n_episodes": 5, "gamma": 0.99,
-               "reinforce_lr": 0.003},
-        "reward": {"overload_threshold_norm": 0.8, "optimal_load_norm": 0.5,
-                   "lambda_overload": 0.4, "lambda_imbalance": 0.3},
+        "rl": {
+            "episode_length": EPISODE_LEN,
+            "n_episodes": 5,
+            "gamma": 0.99,
+            "reinforce_lr": 0.003,
+        },
+        "reward": {
+            "overload_threshold_norm": 0.8,
+            "optimal_load_norm": 0.5,
+            "lambda_overload": 0.4,
+            "lambda_imbalance": 0.3,
+        },
     }
     p = tmp_path / "setup.json"
     p.write_text(json.dumps(setup))
