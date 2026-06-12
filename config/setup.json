@@ -5,16 +5,32 @@
     "n_actions": 6,
     "state_dim": 5,
     "train_val_split": 0.8,
-    "kaggle_dataset": "placeholder/workout-dataset",
+    "kaggle_dataset": "tejaswinimukesh/hevy-app-workout-dataset-from-dumbbells-to-data",
     "columns": {
-      "date": "Date",
-      "sets": "Sets",
-      "reps": "Reps",
-      "weight": "Weight_kg",
-      "duration": "Duration_min",
-      "muscle_group": "Muscle_Group"
+      "date": "start_time",
+      "sets": "_NO_SETS_COL_",
+      "reps": "reps",
+      "weight": "weight_lbs",
+      "duration": "duration_seconds",
+      "muscle_group": "muscle_group"
     },
-    "muscle_groups": ["Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Cardio"]
+    "muscle_groups": [
+      "Chest",
+      "Upper Back",
+      "Lats",
+      "Shoulders",
+      "Biceps",
+      "Triceps",
+      "Quadriceps",
+      "Hamstrings",
+      "Glutes",
+      "Calves",
+      "Abdominals",
+      "Lower Back",
+      "Cardio",
+      "Full Body",
+      "Other"
+    ]
   },
   "lstm": {
     "hidden_size": 64,
