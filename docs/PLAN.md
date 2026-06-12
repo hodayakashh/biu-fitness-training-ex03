@@ -1,0 +1,201 @@
+# PLAN — Architecture & Design
+**Version:** 1.00  
+**Project:** BIU DRL Ex03 — Fitness RL  
+**Date:** 2026-06-12
+
+---
+
+## 1. High-Level Architecture
+
+```
+External (Colab / CLI)
+        │
+        ▼
+  ┌─────────────┐
+  │     SDK     │  src/fitness_rl/sdk/sdk.py
+  │  FitnessRL  │  — single entry point for all logic
+  └──────┬──────┘
+         │
+   ┌─────┴──────────────────────────────┐
+   │                                    │
+   ▼                                    ▼
+┌──────────────────┐          ┌────────────────────┐
+│  DataService     │          │  ModelService      │
+│  (preprocessing) │          │  (LSTM / Policy)   │
+└──────────────────┘          └────────────────────┘
+         │                              │
+         ▼                              ▼
+┌──────────────────┐          ┌────────────────────┐
+│  RLEnvironment   │          │  TrainingService   │
+│  (step/reset)    │◄─────────│  (REINFORCE / A2C) │
+└──────────────────┘          └────────────────────┘
+         │
+         ▼
+   ConfigManager / ApiGatekeeper / VersionTracker
+```
+
+---
+
+## 2. Module Map
+
+| Module | File | Responsibility | Max lines |
+|--------|------|---------------|-----------|
+| SDK | `sdk/sdk.py` | Single public entry-point | 150 |
+| DataService | `services/data_service.py` | Load CSV, compute daily summaries, cluster actions | 150 |
+| LSTMModel | `services/lstm_model.py` | LSTM architecture + train/predict | 150 |
+| LSTMTrainer | `services/lstm_trainer.py` | Supervised training loop, loss curves | 100 |
+| RLEnvironment | `services/rl_env.py` | step(), reset(), reward computation | 120 |
+| PolicyNetwork | `services/policy_network.py` | Actor MLP + Critic MLP | 100 |
+| REINFORCETrainer | `services/reinforce_trainer.py` | Episode generation + PG update | 130 |
+| A2CTrainer | `services/a2c_trainer.py` | TD-error, actor+critic updates | 130 |
+| Plotter | `services/plotter.py` | All matplotlib figures | 120 |
+| ConfigManager | `shared/config.py` | Load config/setup.json | 80 |
+| ApiGatekeeper | `shared/gatekeeper.py` | Centralized external call manager | 100 |
+| VersionTracker | `shared/version.py` | Version string "1.00" | 20 |
+| Constants | `constants.py` | Enums, immutable constants | 60 |
+
+---
+
+## 3. State, Action, Reward Design
+
+### 3.1 State Vector s_t (dim = 4)
+
+| Index | Feature | Description |
+|-------|---------|-------------|
+| 0 | `rolling_7day_load` | Sum of `total_volume` over last 7 days (normalised) |
+| 1 | `muscle_balance_score` | Entropy of muscle-group distribution (higher = more balanced) |
+| 2 | `session_duration_avg` | Rolling 7-day average session duration (normalised) |
+| 3 | `day_in_cycle` | Day index 0–27, encoded as fraction (t/27) |
+
+All features are scaled to [0, 1] via min-max normalization fitted on training data.
+
+### 3.2 Action Space a_t (discrete, N_ACTIONS = 6)
+
+K-Means clusters (k=6) on daily summaries yield 6 workout archetypes:
+
+| Action | Label | Typical profile |
+|--------|-------|----------------|
+| 0 | Rest / Recovery | Near-zero volume, all muscles |
+| 1 | Upper Push | High chest/shoulder/tricep volume |
+| 2 | Upper Pull | High back/bicep volume |
+| 3 | Lower Body | High leg/glute volume |
+| 4 | Full Body | Moderate volume across all groups |
+| 5 | Core / Cardio | Low-to-moderate, core focus |
+
+### 3.3 Reward Function
+
+```
+r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
+```
+
+- `gain_t = clip(total_volume_t / VOLUME_TARGET, 0, 1)` — rewards useful training
+- `overload_penalty_t = max(0, rolling_7day_load_t − OVERLOAD_THRESHOLD) / OVERLOAD_THRESHOLD`
+- `imbalance_penalty_t = std(muscle_distribution over last 7 days)`
+- λ₁ = 0.4, λ₂ = 0.3 (tuned via config)
+
+---
+
+## 4. LSTM Architecture
+
+```
+Input: [seq_len=7, state_dim + action_embedding_dim]
+       state_dim = 4,  action_embedding_dim = 8  →  input_size = 12
+
+LSTM Layer 1: hidden=64, dropout=0.2
+LSTM Layer 2: hidden=64, dropout=0.2
+FC Layer:     64 → state_dim (4)
+
+Loss: MSE(s_pred_{t+1}, s_true_{t+1})
+Optimizer: Adam(lr=1e-3)
+Batch size: 64, Epochs: 50, seq_len: 7
+```
+
+---
+
+## 5. Policy Networks
+
+### REINFORCE Actor
+```
+Input: state_dim (4)
+FC1: 4 → 64, ReLU
+FC2: 64 → 32, ReLU
+FC3: 32 → N_ACTIONS (6)
+Output: Softmax → categorical distribution
+```
+
+### A2C Actor (same as REINFORCE)
+### A2C Critic
+```
+Input: state_dim (4)
+FC1: 4 → 64, ReLU
+FC2: 64 → 32, ReLU
+FC3: 32 → 1
+Output: scalar V(s)
+```
+
+---
+
+## 6. Training Protocols
+
+### REINFORCE
+- Episodes: 500
+- Episode length: 28 days
+- Return: G_t = Σ_{k≥t} γ^{k-t} r_k  (γ = 0.99)
+- Baseline: subtract mean(G_t) per episode to reduce variance
+- Optimizer: Adam(lr=3e-4)
+
+### A2C
+- Episodes: 500
+- Episode length: 28 days
+- γ = 0.99
+- Actor lr: 3e-4, Critic lr: 1e-3
+- Value loss coefficient: 0.5
+- Entropy bonus coefficient: 0.01
+
+---
+
+## 7. Data Flow
+
+```
+CSV  ──►  DataService.load()
+              │
+              ▼
+         daily_summaries (DataFrame: N_days × features)
+              │
+         DataService.cluster_actions() → action labels (K-Means k=6)
+              │
+         DataService.build_windows() → (X_seq, y_next_state) tensors
+              │
+              ▼
+         LSTMTrainer.train() ── saved weights ──► RLEnvironment.step()
+                                                       │
+                                                  PolicyTrainer.train()
+                                                       │
+                                                  Plotter.save_all()
+```
+
+---
+
+## 8. Config Hierarchy
+
+```
+config/setup.json          ← LSTM hyperparams, RL hyperparams, reward λ values
+config/rate_limits.json    ← Gatekeeper limits (for any Kaggle API calls)
+.env                       ← KAGGLE_USERNAME, KAGGLE_KEY  (git-ignored)
+.env-example               ← placeholder values (committed)
+src/fitness_rl/constants.py ← Immutable Enums (ACTION names, feature indices)
+```
+
+---
+
+## 9. Testing Strategy
+
+| Layer | Scope | Tool |
+|-------|-------|------|
+| Unit | DataService transformations, reward calc, state normalisation | pytest |
+| Unit | LSTM forward pass shape correctness | pytest + torch |
+| Unit | Policy network output is valid probability distribution | pytest |
+| Integration | End-to-end episode generation (LSTM + Policy) | pytest |
+| Integration | REINFORCE loss decreases over 10 episodes | pytest |
+| Coverage gate | ≥ 85% | `pytest --cov` |
+| Lint gate | 0 violations | `ruff check` |

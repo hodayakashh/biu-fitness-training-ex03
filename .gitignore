@@ -1,0 +1,27 @@
+# Secrets
+.env
+kaggle.json
+
+# Data (download separately via Kaggle API)
+data/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Results (generated; commit selectively)
+results/lstm_weights.pt
+results/plots/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# uv
+.uv/
+
+# OS
+.DS_Store

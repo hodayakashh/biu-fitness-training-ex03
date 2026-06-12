@@ -1,0 +1,21 @@
+{
+  "rate_limits": {
+    "version": "1.00",
+    "services": {
+      "kaggle": {
+        "requests_per_minute": 10,
+        "requests_per_hour": 100,
+        "concurrent_max": 2,
+        "retry_after_seconds": 30,
+        "max_retries": 3
+      },
+      "default": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "concurrent_max": 5,
+        "retry_after_seconds": 30,
+        "max_retries": 3
+      }
+    }
+  }
+}

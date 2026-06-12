@@ -1,0 +1,41 @@
+{
+  "version": "1.00",
+  "data": {
+    "seq_len": 7,
+    "n_actions": 6,
+    "state_dim": 4,
+    "train_val_split": 0.8,
+    "kaggle_dataset": "placeholder/workout-dataset"
+  },
+  "lstm": {
+    "hidden_size": 64,
+    "num_layers": 2,
+    "dropout": 0.2,
+    "action_embed_dim": 8,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "epochs": 50
+  },
+  "rl": {
+    "episode_length": 28,
+    "n_episodes": 500,
+    "gamma": 0.99,
+    "reinforce_lr": 0.0003,
+    "actor_lr": 0.0003,
+    "critic_lr": 0.001,
+    "value_loss_coeff": 0.5,
+    "entropy_bonus": 0.01
+  },
+  "reward": {
+    "volume_target": 10000.0,
+    "overload_threshold": 50000.0,
+    "lambda_overload": 0.4,
+    "lambda_imbalance": 0.3
+  },
+  "paths": {
+    "data_dir": "data/",
+    "results_dir": "results/",
+    "plots_dir": "results/plots/",
+    "lstm_weights": "results/lstm_weights.pt"
+  }
+}
