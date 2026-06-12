@@ -17,6 +17,10 @@ __pycache__/
 results/lstm_weights.pt
 results/plots/
 
+# Model checkpoints
+*.pt
+*.pth
+
 # Jupyter
 .ipynb_checkpoints/
 
