@@ -3,7 +3,7 @@
   "data": {
     "seq_len": 7,
     "n_actions": 6,
-    "state_dim": 4,
+    "state_dim": 5,
     "train_val_split": 0.8,
     "kaggle_dataset": "placeholder/workout-dataset"
   },

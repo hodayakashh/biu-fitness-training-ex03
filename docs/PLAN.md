@@ -58,16 +58,24 @@ External (Colab / CLI)
 
 ## 3. State, Action, Reward Design
 
-### 3.1 State Vector s_t (dim = 4)
+### 3.1 State Vector s_t (dim = 5)
 
-| Index | Feature | Description |
-|-------|---------|-------------|
-| 0 | `rolling_7day_load` | Sum of `total_volume` over last 7 days (normalised) |
-| 1 | `muscle_balance_score` | Entropy of muscle-group distribution (higher = more balanced) |
-| 2 | `session_duration_avg` | Rolling 7-day average session duration (normalised) |
-| 3 | `day_in_cycle` | Day index 0–27, encoded as fraction (t/27) |
+| Index | Feature | Description | Encoding |
+|-------|---------|-------------|----------|
+| 0 | `rolling_7day_load` | Sum of `total_volume` over last 7 days | MinMaxScaler → [0, 1] |
+| 1 | `muscle_balance_score` | Entropy of muscle-group distribution (higher = more balanced) | MinMaxScaler → [0, 1] |
+| 2 | `session_duration_avg` | Rolling 7-day average session duration | MinMaxScaler → [0, 1] |
+| 3 | `day_sin` | sin(2π · t / 28) | Sinusoidal — preserves cyclicality |
+| 4 | `day_cos` | cos(2π · t / 28) | Sinusoidal — preserves cyclicality |
 
-All features are scaled to [0, 1] via min-max normalization fitted on training data.
+**Why sinusoidal for day_in_cycle:**  
+A linear fraction t/27 breaks cyclicality — day 27 and day 0 are numerically far apart but
+conceptually adjacent. sin/cos encode that day 0 ≡ day 28, exactly as a circular feature should.
+
+**Scaler fit rule (data leakage prevention):**  
+MinMaxScaler is fitted **only on the training split** (first 80% of daily summaries),
+then applied (transform only, no re-fit) on the validation split.
+This prevents future statistics from leaking into the LSTM training signal.
 
 ### 3.2 Action Space a_t (discrete, N_ACTIONS = 6)
 
@@ -99,11 +107,11 @@ r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
 
 ```
 Input: [seq_len=7, state_dim + action_embedding_dim]
-       state_dim = 4,  action_embedding_dim = 8  →  input_size = 12
+       state_dim = 5,  action_embedding_dim = 8  →  input_size = 13
 
 LSTM Layer 1: hidden=64, dropout=0.2
 LSTM Layer 2: hidden=64, dropout=0.2
-FC Layer:     64 → state_dim (4)
+FC Layer:     64 → state_dim (5)
 
 Loss: MSE(s_pred_{t+1}, s_true_{t+1})
 Optimizer: Adam(lr=1e-3)
@@ -116,7 +124,7 @@ Batch size: 64, Epochs: 50, seq_len: 7
 
 ### REINFORCE Actor
 ```
-Input: state_dim (4)
+Input: state_dim (5)
 FC1: 4 → 64, ReLU
 FC2: 64 → 32, ReLU
 FC3: 32 → N_ACTIONS (6)
@@ -126,7 +134,7 @@ Output: Softmax → categorical distribution
 ### A2C Actor (same as REINFORCE)
 ### A2C Critic
 ```
-Input: state_dim (4)
+Input: state_dim (5)
 FC1: 4 → 64, ReLU
 FC2: 64 → 32, ReLU
 FC3: 32 → 1
@@ -193,6 +201,7 @@ src/fitness_rl/constants.py ← Immutable Enums (ACTION names, feature indices)
 | Layer | Scope | Tool |
 |-------|-------|------|
 | Unit | DataService transformations, reward calc, state normalisation | pytest |
+| Unit | Scaler fitted on train split only — val MSE differs from train baseline | pytest |
 | Unit | LSTM forward pass shape correctness | pytest + torch |
 | Unit | Policy network output is valid probability distribution | pytest |
 | Integration | End-to-end episode generation (LSTM + Policy) | pytest |
