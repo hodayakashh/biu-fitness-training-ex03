@@ -22,11 +22,11 @@ A workout that seems beneficial today may be harmful two or three days later if 
 | Part | Deliverable | Status |
 |------|-------------|--------|
 | A | Introduction & motivation | ✅ This PRD |
-| B | Kaggle dataset download & preprocessing | Pending |
-| C | LSTM transition model | Pending |
-| D | REINFORCE policy gradient | Pending |
-| E | A2C (Advantage Actor-Critic) | Pending |
-| F | Analysis, plots, conclusions | Pending |
+| B | Kaggle dataset download & preprocessing | ✅ `data_*` services |
+| C | LSTM transition model | ✅ `lstm_model` + `lstm_trainer` |
+| D | REINFORCE policy gradient | ✅ `reinforce_trainer` |
+| E | A2C (Advantage Actor-Critic) | ✅ `a2c_trainer` |
+| F | Analysis, plots, conclusions | ✅ `plotter` + notebook analysis cells |
 
 ---
 

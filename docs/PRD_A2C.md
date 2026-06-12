@@ -23,7 +23,7 @@ Identical to REINFORCE policy network:
 
 | Layer | Size | Activation |
 |-------|------|-----------|
-| Input | 4 | — |
+| Input | 5 | — |
 | FC1 | 64 | ReLU |
 | FC2 | 32 | ReLU |
 | Output | 6 | Softmax |
@@ -32,7 +32,7 @@ Identical to REINFORCE policy network:
 
 | Layer | Size | Activation |
 |-------|------|-----------|
-| Input | 4 | — |
+| Input | 5 | — |
 | FC1 | 64 | ReLU |
 | FC2 | 32 | ReLU |
 | Output | 1 | None (regression) |

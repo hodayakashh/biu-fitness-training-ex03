@@ -26,18 +26,18 @@ The LSTM does **not** make decisions — it answers:
 | Dimension | Description |
 |-----------|-------------|
 | `seq_len = 7` | Window of the past 7 days |
-| `state_dim = 4` | Features per day: rolling_load, muscle_balance, duration_avg, day_in_cycle |
+| `state_dim = 5` | Features per day: rolling_load, muscle_balance, duration_avg, day_sin, day_cos |
 | `action_embed_dim = 8` | Learned embedding of the discrete action (0–5) |
-| `input_size = 12` | Concatenated state + action embedding per timestep |
+| `input_size = 13` | Concatenated state + action embedding per timestep (5 + 8) |
 
-Input tensor shape: `(batch_size, seq_len=7, input_size=12)`
+Input tensor shape: `(batch_size, seq_len=7, input_size=13)`
 
 ### Output
 | Dimension | Description |
 |-----------|-------------|
-| `state_dim = 4` | Predicted next-day state vector `ŝ_{t+1}` |
+| `state_dim = 5` | Predicted next-day state vector `ŝ_{t+1}` |
 
-Output tensor shape: `(batch_size, state_dim=4)`
+Output tensor shape: `(batch_size, state_dim=5)`
 
 ---
 
@@ -54,7 +54,7 @@ Embedding(N_ACTIONS=6, action_embed_dim=8)
           LSTM Layer 2
           hidden=64, dropout=0.2
                 │
-         FC: 64 → state_dim(4)
+         FC: 64 → state_dim(5)
                 │
          output ŝ_{t+1}
 ```

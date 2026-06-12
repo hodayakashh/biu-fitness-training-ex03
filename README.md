@@ -15,19 +15,28 @@ The project reframes personal fitness planning as a **sequential decision-making
 
 ## Kaggle Dataset
 
-Search Kaggle for a structured workout log dataset (e.g. `gym workout tracker`, `gym members exercise tracking`).  
-The dataset must include per-session records with columns for sets, reps, weight/resistance, duration, and muscle group.
+This project uses the Hevy workout-log dataset, pinned in
+`config/setup.json → data.kaggle_dataset`:
 
-**Download via Kaggle API:**
-```bash
-pip install kaggle
-mkdir -p ~/.kaggle && cp kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
-
-kaggle datasets download -d <dataset-owner>/<dataset-name>
-unzip <downloaded>.zip -d data/
+```
+tejaswinimukesh/hevy-app-workout-dataset-from-dumbbells-to-data
 ```
 
-After downloading, update `config/setup.json → data.columns` to match the actual CSV column names.
+It provides per-session exercise records with reps, weight, duration, and muscle
+group — enough to derive daily summaries (total volume, muscle distribution,
+session duration, day-in-cycle). Any structured workout log with the same columns
+can be substituted by editing `config/setup.json → data.columns`.
+
+**Download via the Kaggle API (managed through `uv`):**
+```bash
+mkdir -p ~/.kaggle && cp kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
+
+uv run kaggle datasets download -d tejaswinimukesh/hevy-app-workout-dataset-from-dumbbells-to-data
+unzip hevy-app-workout-dataset-from-dumbbells-to-data.zip -d data/
+```
+
+If you swap in a different dataset, update `config/setup.json → data.columns` to
+match the actual CSV column names.
 
 ---
 
@@ -90,8 +99,8 @@ cp .env-example .env
 ### 3. Download the dataset
 
 ```bash
-kaggle datasets download -d <owner>/<dataset>
-unzip <file>.zip -d data/
+uv run kaggle datasets download -d tejaswinimukesh/hevy-app-workout-dataset-from-dumbbells-to-data
+unzip hevy-app-workout-dataset-from-dumbbells-to-data.zip -d data/
 ```
 
 ### 4. Run the notebook

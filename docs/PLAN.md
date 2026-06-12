@@ -41,7 +41,11 @@ External (Colab / CLI)
 | Module | File | Responsibility | Max lines |
 |--------|------|---------------|-----------|
 | SDK | `sdk/sdk.py` | Single public entry-point | 150 |
-| DataService | `services/data_service.py` | Load CSV, compute daily summaries, cluster actions | 150 |
+| DataService | `services/data_service.py` | Pipeline orchestrator: ties the four data sub-modules together | 150 |
+| DataPreprocessor | `services/data_preprocessor.py` | Daily summaries (total_volume, session_duration, muscle cols, day_in_cycle) + K-Means action clusters | 150 |
+| DataFeatures | `services/data_features.py` | Rolling load/duration, muscle-balance entropy, sin/cos day encoding | 80 |
+| DataNormalizer | `services/data_normalizer.py` | MinMaxScaler fitted on train split only | 100 |
+| DataWindows | `services/data_windows.py` | Sliding-window (state, action, next-state) tensors | 80 |
 | LSTMModel | `services/lstm_model.py` | LSTM architecture + train/predict | 150 |
 | LSTMTrainer | `services/lstm_trainer.py` | Supervised training loop, loss curves | 100 |
 | RLEnvironment | `services/rl_env.py` | step(), reset(), reward computation | 120 |
@@ -96,9 +100,9 @@ K-Means clusters (k=6) on daily summaries yield 6 workout archetypes:
 r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
 ```
 
-- `gain_t = clip(total_volume_t / VOLUME_TARGET, 0, 1)` — rewards useful training
-- `overload_penalty_t = max(0, rolling_7day_load_t − OVERLOAD_THRESHOLD) / OVERLOAD_THRESHOLD`
-- `imbalance_penalty_t = std(muscle_distribution over last 7 days)`
+- `gain_t = max(0, 1 − |rolling_load − optimal_load_norm| / optimal_load_norm)` — bell-shaped, peaks at `optimal_load_norm = 0.5` so the agent is not rewarded for unbounded volume
+- `overload_penalty_t = max(0, rolling_load − overload_threshold_norm) / (1 − overload_threshold_norm)` — all in normalised [0, 1] state space (`overload_threshold_norm = 0.8`)
+- `imbalance_penalty_t = 1 − muscle_balance_score` (where `muscle_balance_score` is the Shannon entropy of the muscle distribution)
 - λ₁ = 0.4, λ₂ = 0.3 (tuned via config)
 
 ---
@@ -125,7 +129,7 @@ Batch size: 64, Epochs: 50, seq_len: 7
 ### REINFORCE Actor
 ```
 Input: state_dim (5)
-FC1: 4 → 64, ReLU
+FC1: 5 → 64, ReLU
 FC2: 64 → 32, ReLU
 FC3: 32 → N_ACTIONS (6)
 Output: Softmax → categorical distribution
@@ -135,7 +139,7 @@ Output: Softmax → categorical distribution
 ### A2C Critic
 ```
 Input: state_dim (5)
-FC1: 4 → 64, ReLU
+FC1: 5 → 64, ReLU
 FC2: 64 → 32, ReLU
 FC3: 32 → 1
 Output: scalar V(s)

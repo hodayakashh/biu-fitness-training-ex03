@@ -37,7 +37,7 @@ G_t = Σ_{k=t}^{T} γ^{k-t} · r_k     γ = 0.99
 
 | Layer | Size | Activation |
 |-------|------|-----------|
-| Input | state_dim = 4 | — |
+| Input | state_dim = 5 | — |
 | FC1 | 64 | ReLU |
 | FC2 | 32 | ReLU |
 | Output | N_ACTIONS = 6 | Softmax |
@@ -75,9 +75,9 @@ r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
 
 | Term | Formula | Purpose |
 |------|---------|---------|
-| `gain_t` | `clip(volume_t / VOLUME_TARGET, 0, 1)` | Reward productive training |
-| `overload_penalty_t` | `max(0, rolling_load_t − OVERLOAD_THRESHOLD) / OVERLOAD_THRESHOLD` | Penalise overtraining |
-| `imbalance_penalty_t` | `std(muscle_distribution over last 7 days)` | Penalise imbalance |
+| `gain_t` | `max(0, 1 − |load − optimal_load_norm| / optimal_load_norm)` (bell-shaped, peaks at `optimal_load_norm=0.5`) | Reward productive training without unbounded volume |
+| `overload_penalty_t` | `max(0, load − overload_threshold_norm) / (1 − overload_threshold_norm)` | Penalise overtraining |
+| `imbalance_penalty_t` | `1 − muscle_balance_score` (entropy of muscle distribution) | Penalise imbalance |
 | λ₁ | 0.4 | `config/setup.json` |
 | λ₂ | 0.3 | `config/setup.json` |
 

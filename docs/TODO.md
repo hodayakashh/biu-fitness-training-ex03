@@ -18,7 +18,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 0.6 | Write `docs/PRD_A2C.md` | 🔴 Critical | Actor/Critic roles, TD-error, comparison plan |
 | 0.7 | **Get approval** from user on all docs | 🔴 Critical | User confirms → Phase 1 unlocked |
 
-**Status:** [~] in progress (0.1–0.6 complete, awaiting 0.7)
+**Status:** `[x]` done (docs approved, downstream phases implemented)
 
 ---
 
@@ -35,7 +35,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 1.7 | Create `src/fitness_rl/__init__.py` skeleton | 🔴 Critical | Exports SDK, defines `__version__` |
 | 1.8 | Create `tests/conftest.py` | 🟡 High | Shared fixtures for all tests |
 
-**Status:** `[ ]` pending approval
+**Status:** `[x]` done
 
 ---
 
@@ -50,7 +50,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 2.5 | Implement `DataService.build_windows()` | 🔴 Critical | Sliding windows of seq_len=7 |
 | 2.6 | Write unit tests for DataService | 🔴 Critical | ≥ 85% branch coverage |
 
-**Status:** `[ ]` blocked by Phase 0 approval
+**Status:** `[x]` done (all DataService sub-modules implemented + tested)
 
 ---
 
@@ -65,7 +65,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 3.5 | Plot train/val loss curves | 🔴 Critical | Figure saved to `results/plots/lstm_loss.png` |
 | 3.6 | Write unit tests for LSTMModel | 🔴 Critical | Shape tests, deterministic output |
 
-**Status:** `[ ]` blocked by Phase 2
+**Status:** `[x]` done
 
 ---
 
@@ -78,7 +78,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 4.3 | Implement `RLEnvironment.compute_reward()` | 🔴 Critical | Formula matches PRD |
 | 4.4 | Write unit tests for RLEnvironment | 🔴 Critical | Reward bounds, episode length |
 
-**Status:** `[ ]` blocked by Phase 3
+**Status:** `[x]` done
 
 ---
 
@@ -94,7 +94,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 5.6 | Plot reward variance diagnostic | 🟡 High | Saved to `results/plots/reinforce_variance.png` |
 | 5.7 | Write unit tests for REINFORCETrainer | 🔴 Critical | Update direction is correct |
 
-**Status:** `[ ]` blocked by Phase 4
+**Status:** `[x]` done
 
 ---
 
@@ -110,7 +110,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 6.6 | Plot REINFORCE vs A2C comparison | 🔴 Critical | Saved to `results/plots/comparison.png` |
 | 6.7 | Write unit tests for A2CTrainer | 🔴 Critical | Advantage sign is correct |
 
-**Status:** `[ ]` blocked by Phase 5
+**Status:** `[x]` done
 
 ---
 
@@ -125,4 +125,4 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 7.5 | Run `ruff check` → 0 errors | 🔴 Critical | CI passes |
 | 7.6 | Run `pytest --cov` → ≥ 85% | 🔴 Critical | Coverage report green |
 
-**Status:** `[ ]` blocked by Phase 6
+**Status:** `[~]` in progress (notebook, README, plots, lint, tests done; `docs/report.pdf` (7.4) still outstanding)
