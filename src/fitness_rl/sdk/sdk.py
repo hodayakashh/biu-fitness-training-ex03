@@ -44,7 +44,8 @@ class FitnessRLSDK:
             csv_path: Path to the downloaded Kaggle workout CSV.
 
         Returns:
-            dict with keys: daily_df, windows_X, windows_y, scaler, kmeans
+            dict with keys: daily_df, X_train, X_actions_train, y_train,
+            X_val, X_actions_val, y_val, scaler, kmeans.
         """
         from ..services.data_service import DataService
 
@@ -68,7 +69,7 @@ class FitnessRLSDK:
         from ..services.lstm_trainer import LSTMTrainer
 
         trainer = LSTMTrainer(self._cfg)
-        return trainer.train(data["windows_X"], data["windows_y"])
+        return trainer.train(data)
 
     # ------------------------------------------------------------------
     # REINFORCE

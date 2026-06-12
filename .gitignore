@@ -20,6 +20,10 @@ results/plots/
 # Jupyter
 .ipynb_checkpoints/
 
+# Test artifacts
+.coverage
+htmlcov/
+
 # uv
 .uv/
 
