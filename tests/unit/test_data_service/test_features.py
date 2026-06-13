@@ -52,6 +52,12 @@ class TestAddRollingFeatures:
         expected = simple_daily_df["total_volume"].iloc[:7].sum()
         assert result["rolling_7day_load"].iloc[6] == pytest.approx(expected, rel=1e-5)
 
+    def test_window_is_configurable(self, simple_daily_df):
+        """A non-default window must change the rolling sum (sensitivity analysis)."""
+        w3 = add_rolling_features(simple_daily_df, window=3)
+        expected = simple_daily_df["total_volume"].iloc[3:6].sum()
+        assert w3["rolling_7day_load"].iloc[5] == pytest.approx(expected, rel=1e-5)
+
     def test_no_nans_in_output(self, simple_daily_df):
         result = add_rolling_features(simple_daily_df)
         assert (

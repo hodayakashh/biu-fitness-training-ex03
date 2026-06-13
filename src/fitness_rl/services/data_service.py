@@ -116,7 +116,8 @@ class DataService:
         """
         raw_df = self.load_raw(csv_path)
         daily_df = self._prep.compute_daily_summaries(raw_df)
-        daily_df = add_rolling_features(daily_df)
+        rolling_window: int = self._cfg.get_nested("data", "rolling_window") or 7
+        daily_df = add_rolling_features(daily_df, window=rolling_window)
         daily_df = add_sinusoidal_encoding(daily_df)
         daily_df = self._prep.cluster_actions(daily_df)
 

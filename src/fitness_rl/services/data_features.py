@@ -13,7 +13,7 @@ import pandas as pd
 from ..constants import CYCLE_LENGTH
 
 
-def add_rolling_features(daily_df: pd.DataFrame) -> pd.DataFrame:
+def add_rolling_features(daily_df: pd.DataFrame, window: int = 7) -> pd.DataFrame:
     """
     Add rolling_7day_load, session_duration_avg, and muscle_balance_score.
 
@@ -23,13 +23,17 @@ def add_rolling_features(daily_df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         daily_df: Daily summaries with total_volume and session_duration.
+        window: Rolling-window length in days (config-driven; default 7). The
+            column keeps the stable name ``rolling_7day_load`` regardless of
+            window so the state-vector index never shifts; the window size is
+            swept in the sensitivity analysis (docs/sensitivity_analysis.py).
 
     Returns:
         New DataFrame with three added columns.
     """
     df = daily_df.copy()
-    df["rolling_7day_load"] = df["total_volume"].rolling(7, min_periods=1).sum()
-    df["session_duration_avg"] = df["session_duration"].rolling(7, min_periods=1).mean()
+    df["rolling_7day_load"] = df["total_volume"].rolling(window, min_periods=1).sum()
+    df["session_duration_avg"] = df["session_duration"].rolling(window, min_periods=1).mean()
 
     mg_cols = [c for c in df.columns if c.startswith("mg_")]
     if mg_cols:

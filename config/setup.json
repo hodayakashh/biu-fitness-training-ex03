@@ -5,6 +5,7 @@
     "seq_len": 7,
     "n_actions": 6,
     "state_dim": 5,
+    "rolling_window": 7,
     "train_val_split": 0.8,
     "kaggle_dataset": "tejaswinimukesh/hevy-app-workout-dataset-from-dumbbells-to-data",
     "columns": {
