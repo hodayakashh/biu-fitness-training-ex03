@@ -280,6 +280,9 @@ def main() -> None:
         "a2c_conv": convergence_episode(a2c["episode_returns"]),
         "action_labels": labels,
         "sweep": sweep,
+        # Raw greedy-episode sequence for the report's 28-day plan table.
+        "a2c_actions": a2c_actions,
+        "a2c_loads": [float(s[0]) for s in a2c_states],
     }
     RESULTS_PKL.parent.mkdir(parents=True, exist_ok=True)
     with RESULTS_PKL.open("wb") as fh:
