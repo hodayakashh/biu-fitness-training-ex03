@@ -144,7 +144,7 @@ biu-drl-ex03/
 │   └── PRD_LSTM.md, PRD_REINFORCE.md, PRD_A2C.md
 ├── notebooks/
 │   └── ex03_fitness_rl.ipynb    # End-to-end Colab notebook
-├── tests/                       # 114+ unit + integration tests (≥ 96% coverage)
+├── tests/                       # 133+ unit + integration tests (100% coverage)
 ├── data/                        # Place downloaded CSV files here
 ├── results/plots/               # Generated figures (auto-created)
 ├── pyproject.toml               # uv dependencies + ruff + pytest config
