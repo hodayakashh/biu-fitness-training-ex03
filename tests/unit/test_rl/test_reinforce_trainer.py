@@ -116,6 +116,30 @@ class TestPGLoss:
         loss = REINFORCETrainer._pg_loss(log_probs, returns)
         assert loss.item() == pytest.approx(0.0, abs=1e-5)
 
+    def test_entropy_bonus_shifts_loss(self, policy):
+        """With zero advantage, loss equals only the (negated) entropy bonus."""
+        state = torch.randn(STATE_DIM)
+        dist = policy(state)
+        log_probs = [dist.log_prob(dist.sample()) for _ in range(4)]
+        entropies = [dist.entropy() for _ in range(4)]
+        returns = torch.ones(4) * 5.0  # zero advantage → pg term is 0
+        coeff = 0.1
+        loss = REINFORCETrainer._pg_loss(log_probs, returns, entropies, coeff)
+        expected = -coeff * torch.stack(entropies).mean()
+        assert loss.item() == pytest.approx(expected.item(), abs=1e-5)
+
+    def test_loss_with_entropy_has_gradient(self, policy):
+        """The entropy term must keep the loss differentiable w.r.t. policy params."""
+        state = torch.randn(STATE_DIM)
+        dist = policy(state)
+        log_probs = [dist.log_prob(dist.sample()) for _ in range(4)]
+        entropies = [dist.entropy() for _ in range(4)]
+        returns = torch.tensor([1.0, 2.0, 3.0, 4.0])
+        loss = REINFORCETrainer._pg_loss(log_probs, returns, entropies, 0.01)
+        loss.backward()
+        grads = [p.grad for p in policy.parameters() if p.grad is not None]
+        assert len(grads) > 0
+
 
 class TestRunEpisodeAndTrain:
     def test_run_episode_length(self, cfg, policy):
@@ -123,9 +147,18 @@ class TestRunEpisodeAndTrain:
         trainer = REINFORCETrainer.__new__(REINFORCETrainer)
         trainer._cfg = cfg
         trainer._env = _MockEnv()
-        log_probs, rewards = trainer._run_episode(policy)
+        log_probs, rewards, entropies = trainer._run_episode(policy)
         assert len(log_probs) == EPISODE_LEN
         assert len(rewards) == EPISODE_LEN
+
+    def test_run_episode_collects_entropy_per_step(self, cfg, policy):
+        """One entropy value must be collected for every step in the episode."""
+        trainer = REINFORCETrainer.__new__(REINFORCETrainer)
+        trainer._cfg = cfg
+        trainer._env = _MockEnv()
+        _, _, entropies = trainer._run_episode(policy)
+        assert len(entropies) == EPISODE_LEN
+        assert all(torch.is_tensor(e) for e in entropies)
 
     def test_train_returns_expected_keys(self, cfg):
         trainer = REINFORCETrainer.__new__(REINFORCETrainer)
