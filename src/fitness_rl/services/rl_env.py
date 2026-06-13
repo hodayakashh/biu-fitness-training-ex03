@@ -13,11 +13,14 @@ Episode structure:
 
 from __future__ import annotations
 
+from collections import deque
+
 import numpy as np
 import torch
 
-from ..constants import STATE_MUSCLE_BALANCE, STATE_ROLLING_LOAD
+from ..constants import N_ACTIONS
 from ..services.lstm_model import LSTMTransitionModel
+from ..services.reward import RewardFunction
 from ..shared.config import ConfigManager
 
 
@@ -52,6 +55,13 @@ class RLEnvironment:
         self._episode_length: int = cfg.get_nested("rl", "episode_length") or 28
         self._seq_len: int = cfg.get_nested("data", "seq_len") or 7
 
+        # Number of distinct actions, used to normalise the variety entropy.
+        self._n_actions: int = cfg.get_nested("data", "n_actions") or N_ACTIONS
+        # Rolling window length over the agent's OWN recent actions (not LSTM).
+        self._variety_window: int = self._reward_cfg.get("variety_window", 7)
+        # Reward is an injected building block (single responsibility, testable).
+        self._reward = RewardFunction(self._reward_cfg, self._n_actions)
+
         # Keep training windows for realistic episode initialisation
         self._x_train: np.ndarray = data["X_train"].numpy()  # (N, seq_len, state_dim)
         self._xa_train: np.ndarray = data["X_actions_train"].numpy()  # (N, seq_len)
@@ -59,6 +69,11 @@ class RLEnvironment:
         self._state: np.ndarray = np.zeros(self._x_train.shape[2])
         self._history_states: np.ndarray = np.zeros_like(self._x_train[0])
         self._history_actions: np.ndarray = np.zeros(self._seq_len, dtype=np.int64)
+        # Rolling window of actions the agent ACTUALLY took this episode. This
+        # is the agent's real choice history — unlike _history_actions (which is
+        # consumed by the LSTM and warm-started from a training window), this is
+        # what the repetition penalty inspects so it reflects true behaviour.
+        self._action_window: deque[int] = deque(maxlen=self._variety_window)
         self._step_count: int = 0
 
     @property
@@ -80,6 +95,7 @@ class RLEnvironment:
         self._history_states = self._x_train[idx].copy()  # (seq_len, state_dim)
         self._history_actions = self._xa_train[idx].copy()  # (seq_len,)
         self._state = self._history_states[-1].copy()
+        self._action_window.clear()
         self._step_count = 0
         return self._state.copy()
 
@@ -103,6 +119,9 @@ class RLEnvironment:
             done:       True if the episode has reached episode_length.
         """
         self._history_actions[-1] = action
+        # Record the agent's real choice so the repetition penalty sees the
+        # actual action history rather than the LSTM's prediction.
+        self._action_window.append(int(action))
 
         x_s = torch.from_numpy(self._history_states[np.newaxis]).float()  # (1, T, D)
         x_a = torch.from_numpy(self._history_actions[np.newaxis])  # (1, T)
@@ -112,7 +131,7 @@ class RLEnvironment:
             next_state = self._model(x_s, x_a).squeeze(0).numpy()
 
         next_state = np.clip(next_state, -1.5, 1.5)
-        reward = self._compute_reward(next_state)
+        reward = self._reward.compute(next_state, self._action_window)
 
         # Slide window: discard oldest, append new state; keep current action
         self._history_states = np.roll(self._history_states, -1, axis=0)
@@ -123,32 +142,3 @@ class RLEnvironment:
         self._state = next_state
         self._step_count += 1
         return next_state.copy(), float(reward), self._step_count >= self._episode_length
-
-    def _compute_reward(self, next_state: np.ndarray) -> float:
-        """
-        Compute r_t = gain_t − λ₁·overload_penalty_t − λ₂·imbalance_penalty_t.
-
-        All inputs are normalised state features in [0, 1] space so no
-        raw-unit thresholds are needed — overload_threshold_norm is in [0, 1].
-
-        Args:
-            next_state: Predicted next state array (state_dim,).
-
-        Returns:
-            Scalar reward value.
-        """
-        rolling_load = float(np.clip(next_state[STATE_ROLLING_LOAD], 0.0, 1.0))
-        muscle_balance = float(np.clip(next_state[STATE_MUSCLE_BALANCE], 0.0, 1.0))
-
-        overload_thr: float = self._reward_cfg.get("overload_threshold_norm", 0.8)
-        optimal_load: float = self._reward_cfg.get("optimal_load_norm", 0.5)
-        lambda1: float = self._reward_cfg.get("lambda_overload", 0.4)
-        lambda2: float = self._reward_cfg.get("lambda_imbalance", 0.3)
-
-        # Bell-shaped gain: peaks at optimal_load, falls symmetrically on both sides.
-        # Prevents the agent from maximising volume without bound.
-        gain = max(0.0, 1.0 - abs(rolling_load - optimal_load) / max(optimal_load, 1e-8))
-        overload_penalty = max(0.0, rolling_load - overload_thr) / max(1.0 - overload_thr, 1e-8)
-        imbalance_penalty = 1.0 - muscle_balance
-
-        return gain - lambda1 * overload_penalty - lambda2 * imbalance_penalty

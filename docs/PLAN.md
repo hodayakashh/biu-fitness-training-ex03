@@ -1,6 +1,6 @@
 # PLAN — Architecture & Design
-**Version:** 1.00  
-**Project:** BIU DRL Ex03 — Fitness RL  
+**Version:** 1.00
+**Project:** BIU DRL Ex03 — Fitness RL
 **Date:** 2026-06-12
 
 ---
@@ -72,11 +72,11 @@ External (Colab / CLI)
 | 3 | `day_sin` | sin(2π · t / 28) | Sinusoidal — preserves cyclicality |
 | 4 | `day_cos` | cos(2π · t / 28) | Sinusoidal — preserves cyclicality |
 
-**Why sinusoidal for day_in_cycle:**  
+**Why sinusoidal for day_in_cycle:**
 A linear fraction t/27 breaks cyclicality — day 27 and day 0 are numerically far apart but
 conceptually adjacent. sin/cos encode that day 0 ≡ day 28, exactly as a circular feature should.
 
-**Scaler fit rule (data leakage prevention):**  
+**Scaler fit rule (data leakage prevention):**
 MinMaxScaler is fitted **only on the training split** (first 80% of daily summaries),
 then applied (transform only, no re-fit) on the validation split.
 This prevents future statistics from leaking into the LSTM training signal.
@@ -97,13 +97,15 @@ K-Means clusters (k=6) on daily summaries yield 6 workout archetypes:
 ### 3.3 Reward Function
 
 ```
-r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
+r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t − λ₃ · repetition_penalty_t
 ```
 
 - `gain_t = max(0, 1 − |rolling_load − optimal_load_norm| / optimal_load_norm)` — bell-shaped, peaks at `optimal_load_norm = 0.5` so the agent is not rewarded for unbounded volume
 - `overload_penalty_t = max(0, rolling_load − overload_threshold_norm) / (1 − overload_threshold_norm)` — all in normalised [0, 1] state space (`overload_threshold_norm = 0.8`)
 - `imbalance_penalty_t = 1 − muscle_balance_score` (where `muscle_balance_score` is the Shannon entropy of the muscle distribution)
-- λ₁ = 0.4, λ₂ = 0.3 (tuned via config)
+- `repetition_penalty_t = 1 − H(recent_actions) / log(N_ACTIONS)` — variety penalty computed from the **Shannon entropy of the agent's OWN last-`variety_window` actions**, NOT from the LSTM-predicted state. This is the critical fix for policy mode collapse: the LSTM cannot differentiate the muscle-group consequences of actions, so a state-derived imbalance penalty never reacts to the agent's real choices. Penalising low action-variety directly forces diversity.
+- λ₁ = 0.4, λ₂ = 0.3, λ₃ = 2.0, `variety_window = 7` (all tuned via config)
+- The reward is implemented as an injected `RewardFunction` building block (`services/reward.py`) — single responsibility, independently testable.
 
 ---
 

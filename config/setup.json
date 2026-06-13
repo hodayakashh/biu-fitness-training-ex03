@@ -57,7 +57,9 @@
     "overload_threshold_norm": 0.8,
     "optimal_load_norm": 0.5,
     "lambda_overload": 0.4,
-    "lambda_imbalance": 0.3
+    "lambda_imbalance": 0.3,
+    "lambda_repetition": 2.0,
+    "variety_window": 7
   },
   "paths": {
     "data_dir": "data/",

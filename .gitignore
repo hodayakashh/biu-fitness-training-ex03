@@ -33,3 +33,7 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# Agent worktrees and jupyter runtime
+.claude/
+notebooks/.jupyter/
