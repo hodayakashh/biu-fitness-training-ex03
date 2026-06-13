@@ -48,13 +48,15 @@ External (Colab / CLI)
 | DataWindows | `services/data_windows.py` | Sliding-window (state, action, next-state) tensors | 80 |
 | LSTMModel | `services/lstm_model.py` | LSTM architecture + train/predict | 150 |
 | LSTMTrainer | `services/lstm_trainer.py` | Supervised training loop, loss curves | 100 |
-| RLEnvironment | `services/rl_env.py` | step(), reset(), reward computation | 120 |
+| RLEnvironment | `services/rl_env.py` | step(), reset() — wraps the LSTM world model | 120 |
+| RewardFunction | `services/reward.py` | gain + overload/imbalance/repetition penalties (injected building block) | 100 |
 | PolicyNetwork | `services/policy_network.py` | Actor MLP + Critic MLP | 100 |
-| REINFORCETrainer | `services/reinforce_trainer.py` | Episode generation + PG update | 130 |
+| REINFORCETrainer | `services/reinforce_trainer.py` | Episode generation + PG update + entropy bonus | 150 |
 | A2CTrainer | `services/a2c_trainer.py` | TD-error, actor+critic updates | 130 |
 | Plotter | `services/plotter.py` | All matplotlib figures | 120 |
 | ConfigManager | `shared/config.py` | Load config/setup.json | 80 |
 | ApiGatekeeper | `shared/gatekeeper.py` | Centralized external call manager | 100 |
+| Seeding | `shared/seeding.py` | Global RNG seed for reproducible, fair comparison | 30 |
 | VersionTracker | `shared/version.py` | Version string "1.00" | 20 |
 | Constants | `constants.py` | Enums, immutable constants | 60 |
 
@@ -193,7 +195,7 @@ CSV  ──►  DataService.load()
 ## 8. Config Hierarchy
 
 ```
-config/setup.json          ← LSTM hyperparams, RL hyperparams, reward λ values
+config/setup.json          ← global seed, LSTM hyperparams, RL hyperparams, reward λ values
 config/rate_limits.json    ← Gatekeeper limits (for any Kaggle API calls)
 .env                       ← KAGGLE_USERNAME, KAGGLE_KEY  (git-ignored)
 .env-example               ← placeholder values (committed)

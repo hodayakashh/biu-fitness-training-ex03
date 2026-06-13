@@ -18,6 +18,7 @@ import torch
 from ..services.policy_network import CriticNetwork, PolicyNetwork
 from ..services.rl_env import RLEnvironment
 from ..shared.config import ConfigManager
+from ..shared.seeding import set_global_seed
 
 
 class A2CTrainer:
@@ -51,6 +52,8 @@ class A2CTrainer:
             dict with keys: actor (PolicyNetwork), critic (CriticNetwork),
             episode_returns (list[float]).
         """
+        # Re-seed so A2C trains on the same RNG stream as REINFORCE (fair compare).
+        set_global_seed(self._cfg.get("seed"))
         rl_cfg: dict = self._cfg.get("rl") or {}
         n_episodes: int = rl_cfg.get("n_episodes", 500)
         gamma: float = rl_cfg.get("gamma", 0.99)

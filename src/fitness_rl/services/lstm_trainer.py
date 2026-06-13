@@ -14,6 +14,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..shared.config import ConfigManager
+from ..shared.seeding import set_global_seed
 from .lstm_model import LSTMTransitionModel
 
 
@@ -50,6 +51,7 @@ class LSTMTrainer:
             dict with keys: model (LSTMTransitionModel), train_losses (list[float]),
             val_losses (list[float]).
         """
+        set_global_seed(self._cfg.get("seed"))  # reproducible LSTM weights
         model = self._build_model()
         lstm_cfg = self._cfg.get("lstm") or {}
         lr: float = lstm_cfg.get("learning_rate", 1e-3)

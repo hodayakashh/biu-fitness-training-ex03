@@ -21,6 +21,7 @@ import torch
 from ..services.policy_network import PolicyNetwork
 from ..services.rl_env import RLEnvironment
 from ..shared.config import ConfigManager
+from ..shared.seeding import set_global_seed
 
 
 class REINFORCETrainer:
@@ -53,6 +54,8 @@ class REINFORCETrainer:
             dict with keys: policy (PolicyNetwork), episode_returns (list[float]),
             return_variance (list[float]).
         """
+        # Re-seed so REINFORCE trains on the same RNG stream as A2C (fair compare).
+        set_global_seed(self._cfg.get("seed"))
         rl_cfg: dict = self._cfg.get("rl") or {}
         n_episodes: int = rl_cfg.get("n_episodes", 500)
         gamma: float = rl_cfg.get("gamma", 0.99)
