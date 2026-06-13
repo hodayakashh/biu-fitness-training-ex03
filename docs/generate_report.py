@@ -30,9 +30,26 @@ rf_first = sum(R["rf_returns"][:50]) / 50
 rf_last = sum(R["rf_returns"][-50:]) / 50
 a2c_first = sum(R["a2c_returns"][:50]) / 50
 a2c_last = sum(R["a2c_returns"][-50:]) / 50
-rf_improvement = (rf_last - rf_first) / abs(rf_first) * 100
-a2c_improvement = (a2c_last - a2c_first) / abs(a2c_first) * 100
+# Absolute return gain (first-50 → last-50). Percentage improvement is avoided
+# because the early-training return is near zero/negative under the variety-
+# penalised reward, which makes ratio-based percentages meaningless.
+rf_gain = rf_last - rf_first
+a2c_gain = a2c_last - a2c_first
 lstm_epochs = len(R["lstm_train_losses"])
+
+# Variance (std of episodic return, first vs last 100 episodes) — computed live
+rf_std0, rf_std1 = R["rf_std"]
+a2c_std0, a2c_std1 = R["a2c_std"]
+rf_var_red = (rf_std0 - rf_std1) / rf_std0 * 100
+a2c_var_red = (a2c_std0 - a2c_std1) / a2c_std0 * 100
+
+# Learned-policy action distributions over a greedy 28-day episode
+rf_dist = R["rf_dist"]
+a2c_dist = R["a2c_dist"]
+rf_distinct = R["rf_distinct"]
+a2c_distinct = R["a2c_distinct"]
+a2c_used = ", ".join(f"{k} ({v})" for k, v in a2c_dist.items() if v > 0)
+rf_used = ", ".join(f"{k} ({v})" for k, v in rf_dist.items() if v > 0)
 
 # ------------------------------------------------------------------
 # Document setup
@@ -197,6 +214,16 @@ story += [
         BODY,
     ),
     Paragraph(
+        "This distinction is fundamental to the assignment: the LSTM answers "
+        "'Given the recent training history and the next workout type, what trainee "
+        "state is likely tomorrow?' It is a predictive model, not a decision-maker. "
+        "The RL algorithms (REINFORCE and A2C) answer the separate question: "
+        "'Which workout type should be chosen now in order to improve long-term "
+        "training quality?' The LSTM serves as the environment dynamics model that "
+        "the RL agent queries at each step of episode generation.",
+        BODY,
+    ),
+    Paragraph(
         "<b>Architecture.</b> Embedding(6, 8) maps discrete actions to dense vectors, "
         "concatenated with the state at each timestep (input size = 13). Two LSTM "
         "layers (hidden=64, dropout=0.2) capture temporal dependencies; a linear "
@@ -211,10 +238,13 @@ story += [
         CAPTION,
     ),
     Paragraph(
-        "Both curves decrease monotonically and converge to similar values, "
-        "indicating the model generalises without overfitting. The validation loss "
-        "slightly undercuts the training loss — consistent with dropout regularisation "
-        "being active during training but disabled at evaluation time.",
+        "Both curves decrease monotonically and converge to similar values. "
+        "The validation loss slightly undercuts the training loss — this can be "
+        "explained by two factors: (1) dropout regularisation is active during "
+        "training but disabled at evaluation time, artificially inflating the "
+        "training loss; and (2) a distribution shift — the validation split covers "
+        "the most recent workout weeks, which may have more consistent training "
+        "patterns than the full historical record.",
         BODY,
     ),
     PageBreak(),
@@ -250,7 +280,7 @@ story += [
     Paragraph(
         f"Figure 2. REINFORCE episodic return over 500 episodes. "
         f"First-50 average: {rf_first:.2f}. Last-50 average: {rf_last:.2f} "
-        f"(+{rf_improvement:.1f}% improvement).",
+        f"(absolute gain +{rf_gain:.2f}).",
         CAPTION,
     ),
     Paragraph(
@@ -294,7 +324,7 @@ story += [
     Paragraph(
         f"Figure 3. A2C episodic return over 500 episodes. "
         f"First-50 average: {a2c_first:.2f}. Last-50 average: {a2c_last:.2f} "
-        f"(+{a2c_improvement:.1f}% improvement).",
+        f"(absolute gain +{a2c_gain:.2f}).",
         CAPTION,
     ),
     Paragraph(
@@ -320,9 +350,13 @@ story += [
             ["Metric", "REINFORCE", "A2C"],
             ["First-50 avg return", f"{rf_first:.2f}", f"{a2c_first:.2f}"],
             ["Last-50 avg return", f"{rf_last:.2f}", f"{a2c_last:.2f}"],
-            ["Improvement", f"+{rf_improvement:.1f}%", f"+{a2c_improvement:.1f}%"],
+            ["Return gain (first→last 50)", f"+{rf_gain:.2f}", f"+{a2c_gain:.2f}"],
+            ["Return std (first 100 eps)", f"{rf_std0:.2f}", f"{a2c_std0:.2f}"],
+            ["Return std (last 100 eps)", f"{rf_std1:.2f}", f"{a2c_std1:.2f}"],
+            ["Variance reduction", f"{rf_var_red:.0f}%", f"{a2c_var_red:.0f}%"],
+            ["Distinct actions in episode", f"{rf_distinct} / 6", f"{a2c_distinct} / 6"],
             ["Update frequency", "Per episode", "Per step"],
-            ["Variance reduction", "Mean baseline", "TD advantage + Critic"],
+            ["Variance reduction method", "Mean baseline", "TD advantage + Critic"],
             ["Extra parameters", "0", "CriticNetwork (~1k)"],
         ],
         colWidths=[6 * cm, 4.5 * cm, 4.5 * cm],
@@ -340,6 +374,14 @@ story += [
     ),
     Spacer(1, 0.4 * cm),
     Paragraph(
+        f"A2C reduces return standard deviation by {a2c_var_red:.0f}% over training "
+        f"(from {a2c_std0:.2f} to {a2c_std1:.2f}), compared to {rf_var_red:.0f}% for "
+        f"REINFORCE (from {rf_std0:.2f} to {rf_std1:.2f}). This confirms that the "
+        "Critic's TD advantage signal provides a more stable gradient estimate than "
+        "Monte Carlo returns.",
+        BODY,
+    ),
+    Paragraph(
         "A2C outperforms REINFORCE on both final return and stability. The key "
         "mechanism is the Critic's ability to assign credit at each step rather "
         "than propagating a single episode-level gradient backwards. This is "
@@ -350,31 +392,66 @@ story += [
     PageBreak(),
 ]
 
-# --- 6. State analysis ---
+# --- 6. Practical Interpretation (data-driven) ---
 story += [
-    Paragraph("6. Practical Interpretation", H1),
+    Paragraph("6. Practical Interpretation — What Did the Policy Learn?", H1),
     hr(),
-    fig("state_analysis.png"),
     Paragraph(
-        "Figure 5. Normalised rolling 7-day load over the 448-day dataset. "
-        "Weekly periodisation and rest days are visible as dips.",
+        "To answer the professor's central question — <i>did the policy avoid "
+        "excessive concentration on one muscle group?</i> — we ran each trained "
+        "policy greedily for one 28-day episode and counted how many days were "
+        "assigned to each workout archetype.",
+        BODY,
+    ),
+    fig("action_distribution.png"),
+    Paragraph(
+        "Figure 5. Action distribution of the learned REINFORCE and A2C policies "
+        "over a greedy 28-day episode.",
         CAPTION,
     ),
     Paragraph(
-        "Both algorithms learned policies that avoid two failure modes present in "
-        "naive strategies: (a) <b>overload collapse</b> — training maximum volume "
-        "every day until fatigue accumulates and reward craters; and (b) "
-        "<b>rest collapse</b> — assigning rest indefinitely for a zero-penalty reward. "
-        "The bell-shaped gain function (peaking at normalised load = 0.5) makes both "
-        "extremes suboptimal, guiding the policy toward moderate, balanced training.",
+        f"<b>Key finding.</b> A2C learned a substantially more diverse policy than "
+        f"REINFORCE. Over the 28-day episode, A2C used <b>{a2c_distinct} of 6</b> "
+        f"workout archetypes ({a2c_used}), whereas REINFORCE used only "
+        f"<b>{rf_distinct} of 6</b> ({rf_used}). This is direct evidence that A2C's "
+        "lower-variance gradient — combined with the entropy bonus and the "
+        "action-variety reward term — escapes the single-action mode collapse that "
+        "a naive reward design produces.",
         BODY,
     ),
     Paragraph(
-        "The converged A2C policy shows a preference for alternating higher-volume "
-        "sessions with recovery days — a pattern consistent with evidence-based "
-        "periodisation principles. Muscle-group imbalance penalties further "
-        "discourage consecutive sessions targeting the same muscle group.",
+        "<b>Reward design note.</b> An earlier reward formulation that derived the "
+        "imbalance penalty solely from the LSTM-predicted state caused both policies "
+        "to collapse onto a single action (the same archetype every day). The LSTM "
+        "world model cannot reliably differentiate the muscle-group consequences of "
+        "different actions, so the penalty never reacted to the agent's real choices. "
+        "We fixed this by adding a repetition penalty (weight lambda_repetition, in "
+        "config) computed from the Shannon entropy of the agent's OWN recent action "
+        "history — a direct, model-independent incentive for variety.",
         BODY,
+    ),
+    PageBreak(),
+    fig("episode_trajectory.png"),
+    Paragraph(
+        "Figure 6. A2C policy over one 28-day episode: chosen action per day (top) "
+        "and the resulting normalised rolling load (bottom). The dashed line marks "
+        "the optimal load (0.5) that the bell-shaped gain rewards.",
+        CAPTION,
+    ),
+    Paragraph(
+        "The trajectory shows the A2C agent interleaving higher-load training days "
+        "with recovery/rest days rather than maximising volume every day — the "
+        "alternating high-load / recovery pattern consistent with evidence-based "
+        "periodisation. The rolling load oscillates around the optimal band rather "
+        "than saturating at the overload threshold.",
+        BODY,
+    ),
+    fig("state_analysis.png"),
+    Paragraph(
+        "Figure 7. Normalised rolling load over the same A2C-generated episode "
+        "(state component 0), confirming the policy keeps cumulative load near the "
+        "rewarded optimum rather than driving it to the overload region.",
+        CAPTION,
     ),
 ]
 
@@ -389,6 +466,16 @@ story += [
         "states (e.g., injury, travel) are not represented. The deterministic "
         "predictor provides no uncertainty estimate — the RL agent cannot "
         "distinguish confident predictions from extrapolation.",
+        BODY,
+    ),
+    Paragraph(
+        "The muscle_balance_score in the state vector captures global entropy but "
+        "the LSTM action embedding carries no per-muscle information — it maps "
+        "discrete cluster labels (0–5) to dense vectors without encoding which "
+        "muscle groups each cluster targets. As a result, the imbalance_penalty in "
+        "the reward function may not create the intended incentive for muscle-group "
+        "variety: the LSTM cannot predict different muscle_balance outcomes for "
+        "Upper Push vs Upper Pull actions.",
         BODY,
     ),
     Paragraph("<b>Reward design:</b>", H3),
@@ -427,11 +514,14 @@ story += [
         f"to a trained RL policy for personalised fitness planning. The LSTM "
         f"transition model (val MSE = {R['lstm_val_losses'][-1]:.4f}) provides a "
         f"data-driven world model that replaces a hand-coded simulator. "
-        f"A2C outperforms REINFORCE — achieving a {a2c_improvement:.1f}% return "
-        f"improvement vs {rf_improvement:.1f}% for REINFORCE — confirming that "
-        f"critic-reduced variance matters for episodic fitness tasks with T=28 steps. "
-        f"The modular SDK architecture ensures every result is reproducible by "
-        f"running a single command.",
+        f"A2C outperforms REINFORCE on every axis: a higher final return "
+        f"({a2c_last:.2f} vs {rf_last:.2f}), a larger end-of-training variance "
+        f"reduction ({a2c_var_red:.0f}% vs {rf_var_red:.0f}%), and — most importantly "
+        f"for this task — a far more balanced workout policy that uses "
+        f"{a2c_distinct} of 6 muscle archetypes versus only {rf_distinct} for "
+        f"REINFORCE. This confirms that critic-reduced variance matters for episodic "
+        f"fitness tasks with T=28 steps. The modular SDK architecture ensures every "
+        f"result is reproducible by running a single command.",
         BODY,
     ),
 ]
