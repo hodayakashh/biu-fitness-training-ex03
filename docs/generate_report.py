@@ -51,6 +51,15 @@ a2c_distinct = R["a2c_distinct"]
 a2c_used = ", ".join(f"{k} ({v})" for k, v in a2c_dist.items() if v > 0)
 rf_used = ", ".join(f"{k} ({v})" for k, v in rf_dist.items() if v > 0)
 
+# Convergence speed: episode at which the rolling-mean return first reaches 90%
+# of the way from its initial to its final value. Seed + sweep for reproducibility.
+rf_conv = R["rf_conv"]
+a2c_conv = R["a2c_conv"]
+seed = R["seed"]
+sweep = R["sweep"]  # list of (seed, rf_distinct, rf_final, a2c_distinct, a2c_final)
+sweep_rows = [["Seed", "REINFORCE distinct", "REINFORCE final", "A2C distinct", "A2C final"]]
+sweep_rows += [[str(s), str(rd), f"{rf:+.2f}", str(ad), f"{af:+.2f}"] for s, rd, rf, ad, af in sweep]
+
 # ------------------------------------------------------------------
 # Document setup
 # ------------------------------------------------------------------
@@ -328,9 +337,10 @@ story += [
         CAPTION,
     ),
     Paragraph(
-        "A2C converges faster and more stably than REINFORCE. Per-step updates mean "
-        "the Critic's value estimates improve continuously rather than waiting for "
-        "episode completion, reducing the effective variance of each Actor update.",
+        "Per-step updates mean the Critic's value estimates improve continuously "
+        "rather than waiting for episode completion, reducing the effective variance "
+        "of each Actor update. The convergence behaviour, however, is more nuanced "
+        "than 'A2C is simply faster' — see the quantitative analysis in Section 5.",
         BODY,
     ),
     PageBreak(),
@@ -354,6 +364,7 @@ story += [
             ["Return std (first 100 eps)", f"{rf_std0:.2f}", f"{a2c_std0:.2f}"],
             ["Return std (last 100 eps)", f"{rf_std1:.2f}", f"{a2c_std1:.2f}"],
             ["Variance reduction", f"{rf_var_red:.0f}%", f"{a2c_var_red:.0f}%"],
+            ["Episode to 90% of final return", f"{rf_conv}", f"{a2c_conv}"],
             ["Distinct actions in episode", f"{rf_distinct} / 6", f"{a2c_distinct} / 6"],
             ["Update frequency", "Per episode", "Per step"],
             ["Variance reduction method", "Mean baseline", "TD advantage + Critic"],
@@ -382,12 +393,48 @@ story += [
         BODY,
     ),
     Paragraph(
-        "A2C outperforms REINFORCE on both final return and stability. The key "
-        "mechanism is the Critic's ability to assign credit at each step rather "
-        "than propagating a single episode-level gradient backwards. This is "
-        "especially beneficial in long episodes (T=28) where credit assignment "
-        "over many steps accumulates variance for Monte Carlo methods.",
+        "<b>Convergence speed — a nuanced result.</b> REINFORCE reaches 90% of its "
+        f"own final return faster (episode {rf_conv}) than A2C (episode {a2c_conv}), "
+        "but this is <i>premature convergence</i>, not superiority: REINFORCE "
+        f"plateaus early at a weak, less-diverse policy (final return {rf_last:.2f}, "
+        f"{rf_distinct}/6 archetypes), whereas A2C keeps improving for longer and "
+        f"settles at a substantially higher, more balanced policy (final return "
+        f"{a2c_last:.2f}, {a2c_distinct}/6 archetypes). Fast convergence to a poor "
+        "local optimum is a classic failure mode of high-variance Monte Carlo policy "
+        "gradients; A2C's Critic-reduced variance lets it escape it.",
         BODY,
+    ),
+    Paragraph(
+        "<b>Why A2C is more stable (the mechanism).</b> The Critic assigns credit at "
+        "each step via the TD error, rather than propagating a single episode-level "
+        "return backwards. Over long episodes (T=28) the Monte Carlo return G_t "
+        "accumulates the noise of every future step, so REINFORCE's gradient estimate "
+        "has high variance; the Critic baseline replaces that noisy signal with a "
+        "learned, low-variance advantage.",
+        BODY,
+    ),
+    Spacer(1, 0.3 * cm),
+    Paragraph(
+        f"<b>Robustness across seeds.</b> To confirm the comparison is not an artifact "
+        f"of one random seed, both algorithms were run on five seeds (the reported "
+        f"figures use seed {seed}). A2C used more workout archetypes and reached a "
+        f"higher final return in every single run:",
+        BODY,
+    ),
+    Table(
+        sweep_rows,
+        colWidths=[2.2 * cm, 3.6 * cm, 3.3 * cm, 2.8 * cm, 3.1 * cm],
+        style=TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2b5797")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f0f4fa"), colors.white]),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        ),
     ),
     PageBreak(),
 ]
@@ -475,7 +522,12 @@ story += [
         "muscle groups each cluster targets. As a result, the imbalance_penalty in "
         "the reward function may not create the intended incentive for muscle-group "
         "variety: the LSTM cannot predict different muscle_balance outcomes for "
-        "Upper Push vs Upper Pull actions.",
+        "Upper Push vs Upper Pull actions. We deliberately keep the imbalance_penalty "
+        "in the reward — it is the formulation the assignment specifies and it still "
+        "rewards states the LSTM predicts as well-balanced — but the empirically "
+        "effective variety driver is the action-history repetition_penalty. A "
+        "principled fix would feed each cluster's muscle-group profile into the state "
+        "so the penalty becomes directly action-aware.",
         BODY,
     ),
     Paragraph("<b>Reward design:</b>", H3),
