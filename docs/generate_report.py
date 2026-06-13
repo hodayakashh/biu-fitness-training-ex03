@@ -31,6 +31,7 @@ with open("results/training_results.pkl", "rb") as fh:
 # so the report's narrative can never drift out of sync with the actual run.
 with open("config/setup.json") as fh:
     _reward_cfg = json.load(fh)["reward"]
+lam_overload = _reward_cfg["lambda_overload"]
 lam_imbalance = _reward_cfg["lambda_imbalance"]
 lam_repetition = _reward_cfg["lambda_repetition"]
 
@@ -738,9 +739,12 @@ story += [
     Paragraph(
         "The bell-shaped gain and linear penalties are heuristic. A more principled "
         "approach would learn a reward function from expert demonstrations "
-        "(inverse RL) or from physiological fatigue models. The lambda weights "
-        "(overload 0.4, imbalance 1.0, repetition 0.3) were set so the action-aware "
-        "imbalance term dominates, but were not systematically tuned.",
+        f"(inverse RL) or from physiological fatigue models. The lambda weights "
+        f"(overload {lam_overload}, imbalance {lam_imbalance}, repetition "
+        f"{lam_repetition}) were chosen via the sensitivity sweep in Section 7 — the "
+        "imbalance and repetition terms are weighted co-equally because, empirically, "
+        "the action-aware imbalance penalty alone did not prevent greedy collapse. The "
+        "shape of the gain/penalty functions themselves, however, was not swept.",
         BODY,
     ),
     Paragraph("<b>Action space:</b>", H3),
