@@ -1,5 +1,5 @@
 {
-  "version": "1.00",
+  "version": "1.01",
   "seed": 123,
   "data": {
     "seq_len": 7,
@@ -58,8 +58,8 @@
     "overload_threshold_norm": 0.8,
     "optimal_load_norm": 0.5,
     "lambda_overload": 0.4,
-    "lambda_imbalance": 0.3,
-    "lambda_repetition": 2.0,
+    "lambda_imbalance": 1.5,
+    "lambda_repetition": 1.5,
     "variety_window": 7
   },
   "paths": {
