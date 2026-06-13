@@ -13,7 +13,7 @@ def rate_config(tmp_path) -> str:
     """Rate-limits config with high RPM so tests never block on capacity."""
     config = {
         "rate_limits": {
-            "version": "1.00",
+            "version": "1.01",
             "services": {
                 "default": {
                     "requests_per_minute": 100,
@@ -78,7 +78,7 @@ class TestApiGatekeeper:
         """At the per-minute limit, _wait_for_capacity must sleep until freed."""
         config = {
             "rate_limits": {
-                "version": "1.00",
+                "version": "1.01",
                 "services": {
                     "default": {
                         "requests_per_minute": 1,
@@ -113,7 +113,7 @@ class TestApiGatekeeper:
             gk.execute(always_fails)
 
 
-def _write_config(tmp_path, version="1.00"):
+def _write_config(tmp_path, version="1.01"):
     """Write a rate-limits config with distinct kaggle (10) and default (30) rpm."""
     config = {
         "rate_limits": {

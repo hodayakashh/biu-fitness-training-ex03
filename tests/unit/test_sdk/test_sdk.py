@@ -16,7 +16,7 @@ from fitness_rl.sdk import FitnessRLSDK
 def config_file(tmp_path):
     """Minimal valid setup.json with the version the code expects."""
     p = tmp_path / "setup.json"
-    p.write_text(json.dumps({"version": "1.00", "data": {"seq_len": 7}}))
+    p.write_text(json.dumps({"version": "1.01", "data": {"seq_len": 7}}))
     return p
 
 
@@ -28,7 +28,7 @@ def sdk(config_file) -> FitnessRLSDK:
 class TestInit:
     def test_init_loads_config(self, sdk):
         """__init__ must load the config and expose it via _cfg."""
-        assert sdk._cfg.get("version") == "1.00"
+        assert sdk._cfg.get("version") == "1.01"
 
     def test_init_rejects_version_mismatch(self, tmp_path):
         """check_version must raise when config version != code version."""

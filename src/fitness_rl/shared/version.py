@@ -1,6 +1,6 @@
-"""Version tracking — code must match config version "1.00"."""
+"""Version tracking — code must match config version "1.01"."""
 
-VERSION = "1.00"
+VERSION = "1.01"
 
 
 def check_version(config_version: str) -> None:

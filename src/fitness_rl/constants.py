@@ -14,6 +14,11 @@ class WorkoutAction(IntEnum):
     CORE_CARDIO = 5
 
 
+# GENERIC, INDICATIVE fallback names only. K-Means cluster IDs are arbitrary, so these
+# are NOT a reliable mapping of cluster id → workout type (review finding #3). The
+# authoritative, data-driven labels are produced per run by
+# ``DataPreprocessor.describe_clusters`` (dominant muscle group + load tier) and shipped
+# in the pipeline output as ``data["action_labels"]``. Prefer those for any reporting.
 ACTION_LABELS: dict[int, str] = {
     WorkoutAction.REST: "Rest / Recovery",
     WorkoutAction.UPPER_PUSH: "Upper Push",

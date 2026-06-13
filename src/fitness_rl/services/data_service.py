@@ -120,6 +120,10 @@ class DataService:
         daily_df = add_sinusoidal_encoding(daily_df)
         daily_df = self._prep.cluster_actions(daily_df)
 
+        # Per-cluster muscle profiles + data-driven labels (ADR-001, finding #3).
+        action_profiles, muscle_cols = self._prep.action_profiles(daily_df)
+        action_labels = self._prep.describe_clusters(daily_df, action_profiles, muscle_cols)
+
         split_idx = int(len(daily_df) * self._cfg.get_nested("data", "train_val_split"))
         train_df = daily_df.iloc[:split_idx].copy()
         val_df = daily_df.iloc[split_idx:].copy()
@@ -141,4 +145,7 @@ class DataService:
             "y_val": y_vl,
             "scaler": scaler,
             "kmeans": self._prep.kmeans,
+            "action_muscle_profiles": action_profiles,
+            "muscle_cols": muscle_cols,
+            "action_labels": action_labels,
         }

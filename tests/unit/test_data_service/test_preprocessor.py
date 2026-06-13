@@ -124,3 +124,28 @@ class TestClusterActions:
         daily = add_sinusoidal_encoding(daily)
         prep.cluster_actions(daily)
         assert prep.kmeans is not None
+
+
+class TestActionProfilesAndLabels:
+    """Per-cluster muscle profiles + data-driven labels (ADR-001, finding #3)."""
+
+    def _clustered(self, prep, raw_df):
+        from fitness_rl.services.data_features import add_rolling_features, add_sinusoidal_encoding
+
+        daily = prep.compute_daily_summaries(raw_df)
+        daily = add_rolling_features(daily)
+        daily = add_sinusoidal_encoding(daily)
+        return prep.cluster_actions(daily)
+
+    def test_action_profiles_shape_and_normalised(self, prep, raw_df):
+        daily = self._clustered(prep, raw_df)
+        profiles, mg_cols = prep.action_profiles(daily)
+        assert profiles.shape == (3, len(mg_cols))
+        np.testing.assert_allclose(profiles.sum(axis=1), 1.0, atol=1e-5)
+
+    def test_describe_clusters_labels_one_per_action(self, prep, raw_df):
+        daily = self._clustered(prep, raw_df)
+        profiles, mg_cols = prep.action_profiles(daily)
+        labels = prep.describe_clusters(daily, profiles, mg_cols)
+        assert set(labels.keys()) == {0, 1, 2}
+        assert all(isinstance(v, str) and v for v in labels.values())

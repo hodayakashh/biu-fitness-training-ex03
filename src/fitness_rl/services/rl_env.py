@@ -1,8 +1,14 @@
 """
-RLEnvironment — fitness training environment backed by the LSTM transition model.
+RLEnvironment — hybrid world model for the fitness training task (PLAN ADR-001).
 
-The environment wraps the trained LSTM so that RL algorithms (REINFORCE, A2C)
-can generate episodes without needing real workout data at inference time.
+Dynamics are split across two sources:
+  * the trained LSTM predicts the history-dependent fatigue/temporal dimensions
+    (rolling_load, session_duration, day_sin/cos), and
+  * the muscle_balance dimension is governed by a KNOWN, action-conditioned rule:
+    the normalised entropy of the mean muscle-group profile of the agent's recent
+    actions. This makes the agent's choices causally and persistently change the
+    state (fixing the near-degenerate MDP) and makes the imbalance penalty
+    action-aware through the environment rather than via an out-of-model hack.
 
 Episode structure:
     s_0 = reset()
@@ -18,7 +24,7 @@ from collections import deque
 import numpy as np
 import torch
 
-from ..constants import N_ACTIONS
+from ..constants import N_ACTIONS, STATE_MUSCLE_BALANCE
 from ..services.lstm_model import LSTMTransitionModel
 from ..services.reward import RewardFunction
 from ..shared.config import ConfigManager
@@ -66,6 +72,19 @@ class RLEnvironment:
         self._x_train: np.ndarray = data["X_train"].numpy()  # (N, seq_len, state_dim)
         self._xa_train: np.ndarray = data["X_actions_train"].numpy()  # (N, seq_len)
 
+        # Action-conditioned muscle dynamics (ADR-001). Each action carries an
+        # empirical muscle-group profile; muscle_balance is the normalised entropy of
+        # the mean profile over a rolling window of the agent's chosen actions. When
+        # the data dict omits profiles (e.g. synthetic unit-test data) the override is
+        # disabled and the LSTM's own muscle_balance prediction is kept unchanged.
+        profiles = data.get("action_muscle_profiles")
+        self._profiles: np.ndarray | None = (
+            np.asarray(profiles, dtype=np.float32) if profiles is not None else None
+        )
+        n_mg = self._profiles.shape[1] if self._profiles is not None else 2
+        self._max_entropy: float = float(np.log(max(n_mg, 2)))
+        self._muscle_window: deque[np.ndarray] = deque(maxlen=self._variety_window)
+
         self._state: np.ndarray = np.zeros(self._x_train.shape[2])
         self._history_states: np.ndarray = np.zeros_like(self._x_train[0])
         self._history_actions: np.ndarray = np.zeros(self._seq_len, dtype=np.int64)
@@ -96,6 +115,7 @@ class RLEnvironment:
         self._history_actions = self._xa_train[idx].copy()  # (seq_len,)
         self._state = self._history_states[-1].copy()
         self._action_window.clear()
+        self._muscle_window.clear()
         self._step_count = 0
         return self._state.copy()
 
@@ -122,6 +142,8 @@ class RLEnvironment:
         # Record the agent's real choice so the repetition penalty sees the
         # actual action history rather than the LSTM's prediction.
         self._action_window.append(int(action))
+        if self._profiles is not None:
+            self._muscle_window.append(self._profiles[action % self._profiles.shape[0]])
 
         x_s = torch.from_numpy(self._history_states[np.newaxis]).float()  # (1, T, D)
         x_a = torch.from_numpy(self._history_actions[np.newaxis])  # (1, T)
@@ -131,6 +153,10 @@ class RLEnvironment:
             next_state = self._model(x_s, x_a).squeeze(0).numpy()
 
         next_state = np.clip(next_state, -1.5, 1.5)
+        # Override the LSTM's (action-blind) muscle_balance with the action-conditioned
+        # value so the agent's choices genuinely shape this state dimension (ADR-001).
+        if self._profiles is not None:
+            next_state[STATE_MUSCLE_BALANCE] = self._muscle_balance_from_actions()
         reward = self._reward.compute(next_state, self._action_window)
 
         # Slide window: discard oldest, append new state; keep current action
@@ -142,3 +168,23 @@ class RLEnvironment:
         self._state = next_state
         self._step_count += 1
         return next_state.copy(), float(reward), self._step_count >= self._episode_length
+
+    def _muscle_balance_from_actions(self) -> float:
+        """
+        Action-conditioned muscle balance ∈ [0, 1] (ADR-001).
+
+        Computes the normalised Shannon entropy of the MEAN muscle-group profile over
+        the agent's last-`variety_window` chosen actions. Repeating one archetype
+        concentrates exposure on few muscle groups → low entropy → low balance → high
+        imbalance penalty; alternating archetypes that target different groups spreads
+        exposure → high entropy → high balance → low penalty.
+
+        Returns:
+            Normalised entropy in [0, 1]; 0 when the window is empty.
+        """
+        if not self._muscle_window:
+            return 0.0
+        mean_profile = np.mean(np.stack(self._muscle_window), axis=0)
+        probs = mean_profile[mean_profile > 0]
+        entropy = float(-np.sum(probs * np.log(probs)))
+        return float(np.clip(entropy / max(self._max_entropy, 1e-8), 0.0, 1.0))

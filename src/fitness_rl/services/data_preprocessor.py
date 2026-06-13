@@ -5,11 +5,13 @@ and cluster days into discrete workout-type actions via K-Means.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 
 from ..constants import CYCLE_LENGTH
 from ..shared.config import ConfigManager
+from .data_clusters import compute_action_profiles, describe_clusters
 
 
 class DataPreprocessor:
@@ -93,6 +95,44 @@ class DataPreprocessor:
         df = daily_df.copy()
         df["action_label"] = self.kmeans.fit_predict(features)
         return df
+
+    def action_profiles(self, daily_df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+        """
+        Per-cluster muscle-group profiles (and the muscle column names).
+
+        Thin delegation to ``data_clusters.compute_action_profiles`` so the heavy
+        logic lives in a separate ≤150-line helper module. The profiles drive the
+        action-conditioned muscle-balance dynamics of the RL environment (ADR-001).
+
+        Args:
+            daily_df: Daily summaries with action_label + mg_* columns.
+
+        Returns:
+            Tuple (profiles array (n_actions, n_mg), mg column names).
+        """
+        n_actions = self._cfg.get_nested("data", "n_actions")
+        return compute_action_profiles(daily_df, n_actions)
+
+    def describe_clusters(
+        self, daily_df: pd.DataFrame, profiles: np.ndarray, mg_cols: list[str]
+    ) -> dict[int, str]:
+        """
+        Data-driven, human-readable label per cluster (review finding #3).
+
+        Thin delegation to ``data_clusters.describe_clusters``. Labels are grounded in
+        each cluster's dominant muscle group + load tier rather than hardcoded against
+        arbitrary K-Means IDs.
+
+        Args:
+            daily_df: Daily summaries with action_label + total_volume.
+            profiles: Output of ``action_profiles``.
+            mg_cols:  Muscle column names aligned to the profile columns.
+
+        Returns:
+            Mapping {cluster_id: label}.
+        """
+        n_actions = self._cfg.get_nested("data", "n_actions")
+        return describe_clusters(daily_df, profiles, mg_cols, n_actions)
 
     # ------------------------------------------------------------------
     # Private helpers

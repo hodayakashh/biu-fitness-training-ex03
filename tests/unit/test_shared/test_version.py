@@ -16,4 +16,4 @@ def test_check_version_raises_on_mismatch():
 
 def test_version_constant_is_string():
     assert isinstance(VERSION, str)
-    assert VERSION == "1.00"
+    assert VERSION == "1.01"

@@ -6,11 +6,14 @@ single responsibility, dependency-injected config, independently testable.
 
     r_t = gain_t − λ₁·overload_penalty − λ₂·imbalance_penalty − λ₃·repetition_penalty
 
-Why the repetition term is action-driven (not state-driven): the LSTM world
-model barely differentiates between actions, so a penalty read from the
-predicted state never reacts to the agent's actual choices and the policy
-collapses onto a single action. Penalising low action-variety directly —
-using the agent's OWN recent action history — forces genuine diversity.
+As of v1.01 the imbalance penalty is action-aware: the environment governs
+muscle_balance from the chosen actions' muscle profiles (hybrid world model,
+PLAN ADR-001), so λ₂·imbalance reacts to the agent's real choices through the
+environment state. Empirically, however, that model-mediated penalty alone does
+NOT fully prevent greedy-rollout collapse, so the action-history repetition
+penalty (λ₃, the normalised entropy of the agent's OWN recent actions) is
+weighted CO-EQUALLY with it (λ₂ = λ₃ = 1.5). Both signals are needed to restore
+genuine workout variety — a co-dependence documented in docs/report.pdf §6.
 """
 
 from __future__ import annotations
@@ -55,11 +58,13 @@ class RewardFunction:
         rolling_load = float(np.clip(next_state[STATE_ROLLING_LOAD], 0.0, 1.0))
         muscle_balance = float(np.clip(next_state[STATE_MUSCLE_BALANCE], 0.0, 1.0))
 
+        # Default fallbacks are kept IN SYNC with config/setup.json (review finding #4):
+        # a missing key must not silently change behaviour relative to the shipped config.
         overload_thr: float = self._cfg.get("overload_threshold_norm", 0.8)
         optimal_load: float = self._cfg.get("optimal_load_norm", 0.5)
         lambda1: float = self._cfg.get("lambda_overload", 0.4)
-        lambda2: float = self._cfg.get("lambda_imbalance", 0.3)
-        lambda3: float = self._cfg.get("lambda_repetition", 0.5)
+        lambda2: float = self._cfg.get("lambda_imbalance", 1.5)
+        lambda3: float = self._cfg.get("lambda_repetition", 1.5)
 
         # Bell-shaped gain: peaks at optimal_load, falls symmetrically either side.
         gain = max(0.0, 1.0 - abs(rolling_load - optimal_load) / max(optimal_load, 1e-8))

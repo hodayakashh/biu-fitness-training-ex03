@@ -252,7 +252,7 @@ class TestConfigKeys:
         env_default = RLEnvironment(ConfigManager(p), model, fake_data)
 
         assert env_default._variety_window == 7  # default
-        # lambda_repetition default (0.5) is applied inside _compute_reward
+        # the repetition penalty default is applied inside RewardFunction.compute
         from collections import deque
 
         state = np.zeros(STATE_DIM, dtype=np.float32)
