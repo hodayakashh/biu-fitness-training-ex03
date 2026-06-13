@@ -70,16 +70,18 @@ b = mean(G_t)  over episode     # reduce variance
 ## 5. Reward Function
 
 ```
-r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t
+r_t = gain_t − λ₁ · overload_penalty_t − λ₂ · imbalance_penalty_t − λ₃ · repetition_penalty_t
 ```
 
 | Term | Formula | Purpose |
 |------|---------|---------|
 | `gain_t` | `max(0, 1 − |load − optimal_load_norm| / optimal_load_norm)` (bell-shaped, peaks at `optimal_load_norm=0.5`) | Reward productive training without unbounded volume |
 | `overload_penalty_t` | `max(0, load − overload_threshold_norm) / (1 − overload_threshold_norm)` | Penalise overtraining |
-| `imbalance_penalty_t` | `1 − muscle_balance_score` (entropy of muscle distribution) | Penalise imbalance |
+| `imbalance_penalty_t` | `1 − muscle_balance_score` — **action-conditioned via ADR-001** | Penalise muscle-group imbalance through the environment |
+| `repetition_penalty_t` | `1 − H(recent_actions) / log(N)` — co-equal with imbalance; both needed to prevent collapse | Variety penalty from the agent's own action history |
 | λ₁ | 0.4 | `config/setup.json` |
-| λ₂ | 0.3 | `config/setup.json` |
+| λ₂ | 1.5 | `config/setup.json` |
+| λ₃ | 1.5 | `config/setup.json` |
 
 ---
 

@@ -1,8 +1,8 @@
 # PRD — Exercise 03: LSTM + REINFORCE + A2C for Personal Fitness Planning
-**Version:** 1.00  
+**Version:** 1.01  
 **Course:** BIU Deep Reinforcement Learning — Dr. Yoram Segal  
 **Author:** Hodaya Kashkash  
-**Date:** 2026-06-12
+**Date:** 2026-06-13
 
 ---
 
@@ -47,6 +47,9 @@ Grader: Dr. Segal or course TA running the notebook end-to-end.
   - `session_duration_t` = total training time per day (minutes)
   - `day_in_cycle_t` = day index within the 28-day training cycle
 - **FR-03** Cluster daily summaries into 6 workout-type classes (action labels) using K-Means.
+- **FR-03a** Derive each cluster's empirical muscle-group profile (`action_muscle_profiles`) and a
+  data-driven human-readable label (dominant muscle + load tier). Cluster IDs from K-Means are
+  arbitrary, so labels MUST NOT be hardcoded against fixed IDs (review finding #3).
 
 ### 4.2 LSTM Transition Model (Part C)
 - **FR-04** Accept sequences of length `seq_len=7` days as input (state + action embedding per step).
@@ -57,7 +60,10 @@ Grader: Dr. Segal or course TA running the notebook end-to-end.
 ### 4.3 REINFORCE Policy (Part D)
 - **FR-08** Policy network π_θ(a|s): MLP → categorical distribution over 6 actions.
 - **FR-09** Generate 28-day episodes using the LSTM as the environment model.
-- **FR-10** Compute reward r_t = gain_t − λ₁·overload_penalty_t − λ₂·imbalance_penalty_t.
+- **FR-10** Compute reward r_t = gain_t − λ₁·overload_penalty_t − λ₂·imbalance_penalty_t − λ₃·repetition_penalty_t.
+- **FR-10a** The `imbalance_penalty` MUST be action-aware: during rollout the environment governs
+  `muscle_balance_score` from the chosen actions' muscle profiles (hybrid world model, ADR-001), so the
+  penalty responds to the agent's real choices through the environment state, not only the LSTM prediction.
 - **FR-11** Update policy with episodic policy-gradient (Monte Carlo returns G_t).
 - **FR-12** Log average episodic return per training iteration; plot reward variance.
 
@@ -84,7 +90,7 @@ Grader: Dr. Segal or course TA running the notebook end-to-end.
 | NFR-04 | No hardcoded values — all config via `config/setup.json` |
 | NFR-05 | All dependencies managed via `uv`; `pyproject.toml` is single source of truth |
 | NFR-06 | No secrets in source code; `.env-example` committed with dummy values |
-| NFR-07 | Version tracking at `"1.00"` in code and all config files |
+| NFR-07 | Version tracking at `"1.01"` in code and all config files |
 | NFR-08 | Notebook runs end-to-end in Google Colab without errors |
 
 ---

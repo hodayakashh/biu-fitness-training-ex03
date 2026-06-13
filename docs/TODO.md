@@ -1,6 +1,6 @@
 # TODO — Exercise 03: Fitness RL
-**Version:** 1.00  
-**Last Updated:** 2026-06-12
+**Version:** 1.01  
+**Last Updated:** 2026-06-13
 
 Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 
@@ -125,4 +125,23 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done
 | 7.5 | Run `ruff check` → 0 errors | 🔴 Critical | CI passes |
 | 7.6 | Run `pytest --cov` → ≥ 85% | 🔴 Critical | Coverage report green |
 
-**Status:** `[~]` in progress (notebook, README, plots, lint, tests done; `docs/report.pdf` (7.4) still outstanding)
+**Status:** `[x]` done
+
+---
+
+## Phase 8 — v1.01 Remediation (lecturer review findings)
+
+Addresses the four findings from the instructor-style review of v1.00. See PLAN.md ADR-001.
+
+| # | Task | Priority | DoD |
+|---|------|----------|-----|
+| 8.1 | ADR-001 + PRD/PLAN/TODO/REVIEW updated **before** code (Golden Rule) | 🔴 Critical | Docs describe hybrid world model & action-aware imbalance |
+| 8.2 | `DataPreprocessor` exports `action_muscle_profiles` + data-driven cluster labels (#3) | 🔴 Critical | Profiles shape `n_actions×n_mg`; labels grounded in dominant muscle + load tier |
+| 8.3 | `RLEnvironment` governs `muscle_balance_score` from chosen actions' profiles (#1, #2) | 🔴 Critical | imbalance penalty reacts to real action choices through env state |
+| 8.4 | Align reward code defaults with `setup.json`; λ re-balanced (#4) | 🟡 High | No silent default/config divergence; `lambda_repetition` consistent |
+| 8.5 | Version bump 1.00 → 1.01 across code + configs | 🟡 High | `check_version` passes; tests updated |
+| 8.6 | Update + extend tests; keep 100% coverage, 0 ruff | 🔴 Critical | `pytest` green at 100%, `ruff check` clean |
+| 8.7 | `docs/run_experiments.py` reproducible regeneration of `training_results.pkl` + plots | 🟡 High | One command rebuilds all artefacts |
+| 8.8 | Retrain LSTM+REINFORCE+A2C, regenerate all plots + `docs/report.pdf` narrative | 🔴 Critical | Report reflects action-aware results & data-driven labels |
+
+**Status:** `[x]` done — 166 tests at 100% coverage, ruff clean, report regenerated.

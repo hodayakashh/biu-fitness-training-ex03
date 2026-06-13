@@ -104,3 +104,25 @@ hooks) on every commit, and the full `pytest` suite on `pre-push`. Install once 
 - `ruff check src/ tests/` → **All checks passed**
 - `ruff format --check src/ tests/` → **50 files already formatted**
 - `pytest` → **133 passed**, **TOTAL coverage 100.00%** (gate 85%)
+
+---
+
+## v1.01 — Instructor-style theoretical review & remediation (2026-06-13)
+
+A second review took the lecturer's perspective, scoring the project against Dr. Segal's
+five emphasised points (LSTM↔RL distinction, balanced reward, REINFORCE↔A2C analysis,
+practical interpretation, preprocessing) and the three "corner" traps (data leakage, time
+encoding, hardcoding). The engineering and the REINFORCE↔A2C analysis scored highly; four
+findings were actioned (see PLAN.md **ADR-001** for the design rationale).
+
+| # | Finding | Severity | Resolution |
+|---|---------|:--------:|-----------|
+| 1 | **LSTM barely action-dependent → partly degenerate MDP.** Action/state collinearity in the K-Means labels meant the agent's choice had little causal grip on the predicted next state. | 🔴 | Hybrid world model (ADR-001): `muscle_balance_score` is now governed by the chosen action's empirical muscle profile, so actions causally and persistently change the state. |
+| 2 | **Inert `imbalance_penalty`.** It read an LSTM dimension that could not be made action-aware; the real variety driver was an out-of-model `repetition_penalty` hack. | 🔴 | `imbalance_penalty` is now action-aware *through the environment* (ADR-001). Empirically it is not sufficient alone, so `repetition_penalty` is weighted **co-equally** (λ₂ = λ₃ = 1.5); both are needed — see report §6. |
+| 3 | **Action names not anchored to clusters.** `ACTION_LABELS` mapped arbitrary K-Means IDs to fixed names; the report's per-action narrative could be mislabelled. | 🟠 | `DataPreprocessor.describe_clusters` derives labels from each cluster's dominant muscle group + load tier; plots/report use these data-driven labels. |
+| 4 | **Default/config divergence.** `reward.py` default `lambda_repetition=0.5` ≠ `setup.json` `2.0`. | 🟡 | Code defaults aligned with `setup.json`; λ values re-balanced and kept in sync. |
+
+**Honest scope note.** The LSTM is intentionally no longer the *whole* world model: load/duration/
+temporal dynamics remain learned, muscle-balance dynamics are now analytic and action-conditioned.
+This "known + learned dynamics" decomposition is standard in model-based RL and is documented as a
+deliberate trade-off rather than hidden.
