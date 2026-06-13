@@ -126,10 +126,17 @@ Or upload `notebooks/ex03_fitness_rl.ipynb` to Google Colab.
 ### 5. Reproduce all results and the report (optional)
 
 ```bash
-uv run python docs/run_experiments.py   # trains LSTM+REINFORCE+A2C, 5-seed sweep,
-                                        # writes results/training_results.pkl + all figures
-uv run python docs/generate_report.py   # builds docs/report.pdf from the saved results
+uv run python docs/run_experiments.py      # trains LSTM+REINFORCE+A2C, 5-seed sweep,
+                                           # writes results/training_results.pkl + figures
+uv run python docs/sensitivity_analysis.py # OAT sweeps: lambda_repetition + rolling_window
+                                           # writes results/sensitivity.pkl + sensitivity.png
+uv run python docs/generate_report.py      # builds docs/report.pdf from the saved results
 ```
+
+Key tunable hyperparameters (all in `config/setup.json`): reward weights
+`lambda_overload/imbalance/repetition`, the `rolling_window` for cumulative load,
+`seq_len`, `seed`, and the RL learning rates. Sections 7 of the report shows the
+sensitivity of the policy to `lambda_repetition` and `rolling_window`.
 
 ---
 

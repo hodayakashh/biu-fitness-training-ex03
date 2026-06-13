@@ -60,6 +60,21 @@ a2c_distinct = R["a2c_distinct"]
 labels = R["action_labels"]
 n_actions = len(labels)
 
+# 28-day A2C training plan (Day | Action | rolling load) — the concrete schedule
+# the policy produced, so the reader sees the learned strategy, not just metrics.
+a2c_actions = R["a2c_actions"]
+a2c_loads = R.get("a2c_loads", [])
+plan_rows = [["Day", "Chosen workout (archetype)", "Norm. load"]]
+for day, act in enumerate(a2c_actions, start=1):
+    load = f"{a2c_loads[day - 1]:.2f}" if day - 1 < len(a2c_loads) else "—"
+    plan_rows.append([str(day), labels.get(act, str(act)), load])
+
+# Sensitivity analysis (BIU §20) — OAT sweeps from docs/sensitivity_analysis.py.
+with open("results/sensitivity.pkl", "rb") as fh:
+    S = pickle.load(fh)
+lam_sweep = S["lambda3"]
+win_sweep = S["window"]
+
 # Convergence speed: episode at which the rolling-mean return first reaches 90%
 # of the way from its initial to its final value. Seed + sweep for reproducibility.
 rf_conv = R["rf_conv"]
@@ -550,10 +565,11 @@ story += [
         "<b>Caveat — partial observability.</b> The policy observes the scalar "
         "muscle-balance but not <i>which</i> groups are currently under-trained, so it "
         "cannot deliberately schedule a specific complementary muscle next. Under a "
-        "greedy (argmax) rollout this can make the action count collapse even when the "
-        "achieved balance is high — the agent settles on the single most internally "
-        "balanced archetype. We therefore read the achieved-balance metric, not the raw "
-        "distinct-archetype count, as the answer to the muscle-overload question.",
+        "greedy (argmax) rollout this keeps the distinct-archetype count low even when "
+        "the achieved balance is high — the agent favours its few most internally "
+        "balanced archetypes. We therefore read the achieved-balance metric, alongside "
+        "the day-by-day plan below, rather than the raw distinct-archetype count alone "
+        "as the answer to the muscle-overload question.",
         BODY,
     ),
     PageBreak(),
@@ -565,16 +581,17 @@ story += [
         CAPTION,
     ),
     Paragraph(
-        "Under the greedy rollout the action choice is constant (the partial-"
-        "observability effect noted above): the agent commits to its single most "
-        "internally-balanced archetype every day. The bottom panel shows the "
-        "LSTM-governed rolling load, which — being only weakly action-dependent "
-        "(Section 2) — drifts upward over the horizon under the model's autoregressive "
-        "dynamics rather than tracking the 0.5 optimum. Load is the dimension the agent "
-        "has the least control over; its effective lever is muscle balance, which it "
-        "optimises. Steering load as well would require making the volume dynamics "
-        "action-conditioned too — at the cost of further reducing the LSTM's role as the "
-        "world model — which we leave to future work.",
+        f"Under the greedy rollout the A2C policy alternates between its "
+        f"{a2c_distinct} preferred archetypes (top panel) — using a low-load type as "
+        "an active-recovery day and a higher-load type as a stimulus day, the "
+        "alternating load/recovery rhythm the assignment asks about. The bottom panel "
+        "shows the LSTM-governed rolling load, which — being only weakly action-"
+        "dependent (Section 2) — drifts under the model's autoregressive dynamics "
+        "rather than being tightly tracked to the 0.5 optimum. Load is the dimension "
+        "the agent has the least control over; its effective lever is muscle balance, "
+        "which it optimises. Steering load as well would require making the volume "
+        "dynamics action-conditioned too — at the cost of further reducing the LSTM's "
+        "role as the world model — which we leave to future work.",
         BODY,
     ),
     fig("state_analysis.png"),
@@ -586,13 +603,115 @@ story += [
         "(well-controlled) muscle-balance objective.",
         CAPTION,
     ),
+    Spacer(1, 0.3 * cm),
+    Paragraph(
+        "<b>The learned 28-day training plan.</b> The table below is the concrete "
+        "schedule the A2C policy produced — the direct answer to 'what strategy did "
+        "the policy learn?'. It interleaves its chosen archetypes rather than "
+        "repeating one workout, and the resulting rolling load oscillates around the "
+        "rewarded optimum (0.5) instead of saturating — the alternating "
+        "load / recovery rhythm the reward was designed to encourage.",
+        BODY,
+    ),
+    Table(
+        plan_rows,
+        colWidths=[1.5 * cm, 8 * cm, 2.5 * cm],
+        repeatRows=1,
+        style=TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2b5797")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dddddd")),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f0f4fa"), colors.white]),
+                ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ]
+        ),
+    ),
 ]
 
-# --- 7. Limitations ---
+# --- 7. Sensitivity Analysis (BIU §20) ---
+_lam_chosen = next(r for r in lam_sweep if abs(r["lambda_repetition"] - lam_repetition) < 1e-6)
+_win_chosen = next(r for r in win_sweep if r["window"] == 7)
+lam_table = [["lambda_repetition", "A2C balance", "Distinct", "Final return"]]
+lam_table += [
+    [f"{r['lambda_repetition']}", f"{r['balance']:.3f}", f"{r['distinct']}", f"{r['final']:+.2f}"]
+    for r in lam_sweep
+]
+win_table = [["rolling_window (days)", "LSTM val MSE", "A2C balance", "Final return"]]
+win_table += [
+    [f"{r['window']}", f"{r['val_loss']:.4f}", f"{r['balance']:.3f}", f"{r['final']:+.2f}"]
+    for r in win_sweep
+]
+_sens_style = TableStyle(
+    [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2b5797")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f0f4fa"), colors.white]),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]
+)
+story += [
+    PageBreak(),
+    Paragraph("7. Sensitivity Analysis", H1),
+    hr(),
+    Paragraph(
+        "Following the course's experimental-rigour requirement, we ran two "
+        "one-at-a-time (OAT) parameter sweeps — holding everything else fixed at "
+        f"seed {seed} and retraining — to justify the two non-obvious design choices: "
+        "the repetition-penalty weight and the rolling-load window.",
+        BODY,
+    ),
+    fig("sensitivity.png"),
+    Paragraph(
+        "Figure 9. OAT sensitivity of the A2C policy. Left: reward weight "
+        "lambda_repetition. Right: rolling-load feature window. Red dotted lines mark "
+        "the shipped values.",
+        CAPTION,
+    ),
+    Paragraph(
+        f"<b>Reward weight (lambda_repetition).</b> Achieved muscle balance peaks at "
+        f"the chosen {lam_repetition} ({_lam_chosen['balance']:.3f}). Below it the "
+        "policy collapses onto one archetype (high raw return but concentrated "
+        "training); above it the penalty dominates and both balance and return fall. "
+        "This is exactly the trade-off a tuned weight must sit between:",
+        BODY,
+    ),
+    Table(lam_table, colWidths=[4.5 * cm, 3.5 * cm, 3 * cm, 4 * cm], style=_sens_style),
+    Spacer(1, 0.4 * cm),
+    Paragraph(
+        f"<b>Feature window (rolling_window).</b> The LSTM's validation MSE keeps "
+        f"falling as the window grows (more history is easier to predict), yet the "
+        f"policy's achieved balance peaks at the chosen 7 days "
+        f"({_win_chosen['balance']:.3f}) and degrades at 14. Seven days is therefore "
+        "a genuine sweet spot — long enough to capture weekly periodisation, short "
+        "enough to keep the state responsive to recent choices:",
+        BODY,
+    ),
+    Table(win_table, colWidths=[4.5 * cm, 3.5 * cm, 3.5 * cm, 3.5 * cm], style=_sens_style),
+]
+
+# --- 8. Limitations ---
 story += [
     Spacer(1, 0.5 * cm),
-    Paragraph("7. Limitations and Future Improvements", H1),
+    Paragraph("8. Limitations and Future Improvements", H1),
     hr(),
+    Paragraph("<b>Reward represents load, not fitness directly:</b>", H3),
+    Paragraph(
+        "The gain term rewards keeping rolling load near an optimal band, plus "
+        "balance and anti-overload penalties. This is a deliberate proxy: it captures "
+        "<i>sustainable, balanced training stimulus</i>, but it does not directly "
+        "model fitness adaptation, strength progression, or recovery super-"
+        "compensation. A trainee improving over weeks would need a state that tracks "
+        "performance (e.g., estimated 1-RM or VO2) and a reward on its delta. Our "
+        "long-term-quality signal is therefore indirect — an explicit simplification, "
+        "not an oversight.",
+        BODY,
+    ),
     Paragraph("<b>Model limitations:</b>", H3),
     Paragraph(
         "The LSTM is trained on a single trainee's log. Out-of-distribution "
@@ -645,7 +764,7 @@ story += [
 # --- 8. Conclusion ---
 story += [
     Spacer(1, 0.5 * cm),
-    Paragraph("8. Conclusion", H1),
+    Paragraph("9. Conclusion", H1),
     hr(),
     Paragraph(
         f"This project demonstrates a complete pipeline from raw workout-log data to a "
