@@ -103,7 +103,7 @@ doc = SimpleDocTemplate(
     topMargin=2.5 * cm,
     bottomMargin=2.5 * cm,
     title="BIU DRL Ex03 — Fitness RL Report",
-    author="Hodaya Kashkash",
+    author="Hodaya Kashkash, Omri Nahum",
 )
 
 styles = getSampleStyleSheet()
@@ -164,7 +164,7 @@ story += [
     Spacer(1, 0.3 * cm),
     Paragraph("LSTM + REINFORCE + A2C for Personal Fitness Planning", TITLE_STYLE),
     Spacer(1, 1.2 * cm),
-    Paragraph("Hodaya Kashkash", SUBTITLE),
+    Paragraph("Hodaya Kashkash, Omri Nahum", SUBTITLE),
     Paragraph("Bar-Ilan University — Dr. Yoram Segal", SUBTITLE),
     Spacer(1, 0.8 * cm),
     hr(),

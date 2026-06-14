@@ -1,7 +1,7 @@
 # BIU DRL Exercise 03 — Fitness RL with LSTM + REINFORCE + A2C
 
 **Course:** Deep Reinforcement Learning — Dr. Yoram Segal, Bar-Ilan University  
-**Author:** Hodaya Kashkash
+**Authors:** Hodaya Kashkash, Omri Nahum
 
 ---
 

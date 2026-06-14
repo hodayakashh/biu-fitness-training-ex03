@@ -1,7 +1,7 @@
 # PRD — Exercise 03: LSTM + REINFORCE + A2C for Personal Fitness Planning
 **Version:** 1.01  
 **Course:** BIU Deep Reinforcement Learning — Dr. Yoram Segal  
-**Author:** Hodaya Kashkash  
+**Authors:** Hodaya Kashkash, Omri Nahum  
 **Date:** 2026-06-13
 
 ---
